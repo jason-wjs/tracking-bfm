@@ -1,0 +1,1 @@
+"""Latent tracking task configurations."""

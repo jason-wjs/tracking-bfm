@@ -1,0 +1,1 @@
+"""Latent velocity task configurations."""
