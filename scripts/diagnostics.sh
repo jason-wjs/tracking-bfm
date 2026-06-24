@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/_common.sh"
-tracking_bfm_cd_repo_root
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+append_arg() {
+  local flag="$1"
+  local value="$2"
+  if [[ -n "$value" ]]; then
+    cmd+=("$flag" "$value")
+  fi
+}
 
 MODE="${MODE:-checkpoint}"
 
@@ -13,25 +20,35 @@ case "$MODE" in
     if [[ -n "${CHECKPOINT:-}" ]]; then
       cmd+=("$CHECKPOINT")
     fi
-    tracking_bfm_add_bool_flag_if_true cmd "--json" JSON
+    if [[ "${JSON:-0}" == "1" || "${JSON:-}" == "true" ]]; then
+      cmd+=(--json)
+    fi
     ;;
   latent)
     TASK="${TASK:-Mjlab-LatentDistillationBFM-Flat-Unitree-G1}"
     OUTPUT_DIR="${OUTPUT_DIR:-logs/diagnostics/latent-space}"
     cmd=(uv run tracking-bfm-analyze-latent-space "$TASK" --output-dir "$OUTPUT_DIR")
-    tracking_bfm_add_arg_if_set cmd "--checkpoint-file" CHECKPOINT
-    tracking_bfm_add_arg_if_set cmd "--motion-path" MOTION_PATH
-    tracking_bfm_add_arg_if_set cmd "--num-envs" NUM_ENVS
-    tracking_bfm_add_arg_if_set cmd "--num-points" NUM_POINTS
-    tracking_bfm_add_arg_if_set cmd "--device" DEVICE
-    tracking_bfm_add_arg_if_set cmd "--sampling-mode" SAMPLING_MODE
-    tracking_bfm_add_arg_if_set cmd "--motion-history-steps" MOTION_HISTORY_STEPS
-    tracking_bfm_add_arg_if_set cmd "--motion-future-steps" MOTION_FUTURE_STEPS
-    tracking_bfm_add_arg_if_set cmd "--proprio-history-length" PROPRIO_HISTORY_LENGTH
-    tracking_bfm_add_arg_if_set cmd "--sim-njmax" SIM_NJMAX
-    tracking_bfm_add_arg_if_set cmd "--sim-nconmax" SIM_NCONMAX
-    tracking_bfm_add_arg_if_set cmd "--max-plot-points" MAX_PLOT_POINTS
-    tracking_bfm_add_bool_switch_if_set cmd "--deterministic" "--no-deterministic" DETERMINISTIC
+    append_arg --checkpoint-file "${CHECKPOINT:-}"
+    append_arg --motion-path "${MOTION_PATH:-}"
+    append_arg --num-envs "${NUM_ENVS:-}"
+    append_arg --num-points "${NUM_POINTS:-}"
+    append_arg --device "${DEVICE:-}"
+    append_arg --sampling-mode "${SAMPLING_MODE:-}"
+    append_arg --motion-history-steps "${MOTION_HISTORY_STEPS:-}"
+    append_arg --motion-future-steps "${MOTION_FUTURE_STEPS:-}"
+    append_arg --proprio-history-length "${PROPRIO_HISTORY_LENGTH:-}"
+    append_arg --sim-njmax "${SIM_NJMAX:-}"
+    append_arg --sim-nconmax "${SIM_NCONMAX:-}"
+    append_arg --max-plot-points "${MAX_PLOT_POINTS:-}"
+    case "${DETERMINISTIC:-}" in
+      1|true|yes|on) cmd+=(--deterministic) ;;
+      0|false|no|off) cmd+=(--no-deterministic) ;;
+      "") ;;
+      *)
+        echo "Invalid DETERMINISTIC=$DETERMINISTIC" >&2
+        exit 2
+        ;;
+    esac
     ;;
   *)
     echo "Unsupported MODE=$MODE. Use MODE=checkpoint or MODE=latent." >&2
@@ -39,5 +56,4 @@ case "$MODE" in
     ;;
 esac
 
-cmd+=("$@")
-tracking_bfm_run_or_print "${cmd[@]}"
+exec "${cmd[@]}" "$@"

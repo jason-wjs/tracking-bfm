@@ -22,7 +22,7 @@ MODE=latent CHECKPOINT=/path/to/latent_actor.pt \
   DECODER_CHECKPOINT=/path/to/decoder.pt ./scripts/export.sh
 
 MODE=filter CHECKPOINT_FILE=/path/to/model.pt MOTION_PATH=/path/to/motions \
-  ./scripts/data-process.sh
+  ./scripts/data_process.sh
 
 MODE=checkpoint CHECKPOINT=/path/to/model.pt JSON=1 ./scripts/diagnostics.sh
 ```

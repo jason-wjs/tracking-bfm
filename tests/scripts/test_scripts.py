@@ -16,7 +16,7 @@ ROOT_QUICK_SCRIPTS = {
   "play.sh": "tracking-bfm-play",
   "evaluate.sh": "tracking-bfm-evaluate",
   "export.sh": "tracking-bfm-export-onnx",
-  "data-process.sh": "tracking-bfm-filter-motions",
+  "data_process.sh": "tracking-bfm-filter-motions",
   "diagnostics.sh": "tracking-bfm-inspect-checkpoint",
 }
 
@@ -41,8 +41,8 @@ def test_root_quick_scripts_are_workflow_level_wrappers() -> None:
   script_dir = ROOT / "scripts"
   actual_shell_scripts = {path.name for path in script_dir.glob("*.sh")}
 
-  assert actual_shell_scripts == set(ROOT_QUICK_SCRIPTS) | {"_common.sh"}
-  assert not os.access(script_dir / "_common.sh", os.X_OK)
+  assert actual_shell_scripts == set(ROOT_QUICK_SCRIPTS)
+  assert not (script_dir / "_common.sh").exists()
 
   for script_name, command in ROOT_QUICK_SCRIPTS.items():
     path = script_dir / script_name
@@ -50,6 +50,8 @@ def test_root_quick_scripts_are_workflow_level_wrappers() -> None:
     assert os.access(path, os.X_OK)
     text = path.read_text()
     assert f"uv run {command}" in text
+    assert "source " not in text
+    assert "tracking_bfm_add_arg_if_set" not in text
     assert "uv run train" not in text
     assert "uv run play" not in text
     assert "H100" not in text
@@ -67,7 +69,7 @@ def test_root_quick_scripts_document_workflow_usage() -> None:
     "./scripts/train.sh",
     "./scripts/play.sh",
     "./scripts/export.sh",
-    "./scripts/data-process.sh",
+    "./scripts/data_process.sh",
     "./scripts/diagnostics.sh",
   ):
     assert command in project_readme
