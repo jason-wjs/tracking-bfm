@@ -35,6 +35,12 @@ def test_project_does_not_vendor_mjlab() -> None:
   assert not (ROOT / "src" / "mjlab").exists()
 
 
+def test_superpowers_outputs_are_gitignored() -> None:
+  gitignore = (ROOT / ".gitignore").read_text()
+
+  assert "docs/superpowers/" in gitignore
+
+
 def test_package_layout_uses_tracking_bfm_namespace() -> None:
   assert (ROOT / "src" / "tracking_bfm" / "__init__.py").is_file()
   assert (ROOT / "src" / "tracking_bfm" / "tasks" / "registry.py").is_file()

@@ -3,12 +3,22 @@ from __future__ import annotations
 import ast
 import importlib
 import json
+import os
 import sys
 from pathlib import Path
 
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
+
+ROOT_QUICK_SCRIPTS = {
+  "train.sh": "tracking-bfm-train",
+  "play.sh": "tracking-bfm-play",
+  "evaluate.sh": "tracking-bfm-evaluate",
+  "export.sh": "tracking-bfm-export-onnx",
+  "data-process.sh": "tracking-bfm-filter-motions",
+  "diagnostics.sh": "tracking-bfm-inspect-checkpoint",
+}
 
 
 def _definitions(path: Path) -> set[str]:
@@ -25,6 +35,42 @@ def test_train_play_evaluate_expose_main_entrypoints() -> None:
 
   for script_name in ("train.py", "play.py", "evaluate.py"):
     assert "main" in _definitions(script_dir / script_name)
+
+
+def test_root_quick_scripts_are_workflow_level_wrappers() -> None:
+  script_dir = ROOT / "scripts"
+  actual_shell_scripts = {path.name for path in script_dir.glob("*.sh")}
+
+  assert actual_shell_scripts == set(ROOT_QUICK_SCRIPTS) | {"_common.sh"}
+  assert not os.access(script_dir / "_common.sh", os.X_OK)
+
+  for script_name, command in ROOT_QUICK_SCRIPTS.items():
+    path = script_dir / script_name
+    assert path.is_file()
+    assert os.access(path, os.X_OK)
+    text = path.read_text()
+    assert f"uv run {command}" in text
+    assert "uv run train" not in text
+    assert "uv run play" not in text
+    assert "H100" not in text
+    assert "adaptive_sampling" not in text
+
+
+def test_root_quick_scripts_document_workflow_usage() -> None:
+  script_readme = (ROOT / "scripts" / "README.md").read_text()
+  project_readme = (ROOT / "README.md").read_text()
+
+  for script_name in ROOT_QUICK_SCRIPTS:
+    assert f"./scripts/{script_name}" in script_readme
+
+  for command in (
+    "./scripts/train.sh",
+    "./scripts/play.sh",
+    "./scripts/export.sh",
+    "./scripts/data-process.sh",
+    "./scripts/diagnostics.sh",
+  ):
+    assert command in project_readme
 
 
 def test_script_modules_importable() -> None:
