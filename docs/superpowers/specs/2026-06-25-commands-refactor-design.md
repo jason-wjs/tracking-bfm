@@ -236,3 +236,10 @@ The refactor is successful when:
 - single and multi command loaders share the same dataset implementation;
 - all existing tests pass;
 - bounded runtime smoke with real test motion data passes.
+
+## Implementation Status
+
+Runtime smoke coverage, reference motion dataset extraction, public reference
+gathering, and single-command dataset reuse are implemented. Adaptive sampling
+remains inside `multi_motion_command.py` and should be revisited only after the
+dataset seam has remained stable through normal training/play usage.
