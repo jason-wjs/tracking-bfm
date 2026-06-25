@@ -80,8 +80,8 @@ further cleanup, such as Motion source resolution.
 | `tracking/mdp/multi_commands.py` | compat-shim | Historical import path that forwards to `multi_motion_command.py`. | Keep until legacy import path can be removed in a breaking change. |
 | `tracking/mdp/observations.py` | reuse-upstream | Functions are identical to upstream `mjlab.tasks.tracking.mdp.observations`. | Keep as explicit upstream function re-export; do not wildcard-export upstream globals into the local MDP namespace. |
 | `tracking/mdp/terminations.py` | reuse-upstream | Functions are identical to upstream `mjlab.tasks.tracking.mdp.terminations`. | Keep as explicit upstream function re-export; do not wildcard-export upstream globals into the local MDP namespace. |
-| `tracking/mdp/metrics.py` | bfm-owned | Similar to old fork and tied to local command shape. | Keep until command interfaces are clarified. |
-| `tracking/mdp/rewards.py` | bfm-owned | Contains BFM-specific reward additions such as joint action rate and body tracking deltas. | Keep; consider extracting BFM-only reward terms later. |
+| `tracking/mdp/metrics.py` | reuse-upstream | Metrics are re-exported from upstream `mjlab.tasks.tracking.mdp.metrics`. | Keep as explicit upstream function re-export. |
+| `tracking/mdp/rewards.py` | reuse-upstream, bfm-owned | Common tracking rewards are re-exported from upstream; only BFM-specific reward additions remain local. | Keep local additions minimal and avoid copying upstream reward terms. |
 | `tracking/rl/__init__.py` | bfm-owned | Exposes local tracking runner. | Keep. |
 | `tracking/rl/runner.py` | bfm-owned, needs-seam | Owns BFM tracking runner behavior including artifact/adaptive sampling coupling. | Keep; move Motion source logic out before deeper runner cleanup. |
 | `tracking/wbteleop/` | bfm-owned | Registered WBTeleop tracking variant built on BFM tracking env cfg and runner semantics. | Keep under `tracking/`; do not promote to top-level task package unless it becomes independent of tracking. |

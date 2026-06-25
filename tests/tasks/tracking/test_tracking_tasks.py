@@ -141,11 +141,18 @@ def test_tracking_bfm_test_optimal_no_reg_no_dr_removes_interference() -> None:
   assert motion_cmd.joint_position_range == (0.0, 0.0)
 
 
-def test_tracking_reuses_upstream_observation_and_termination_terms() -> None:
+def test_tracking_reuses_upstream_mdp_terms_and_keeps_bfm_reward_additions() -> None:
+  from mjlab.tasks.tracking.mdp import metrics as upstream_metrics
   from mjlab.tasks.tracking.mdp import observations as upstream_observations
+  from mjlab.tasks.tracking.mdp import rewards as upstream_rewards
   from mjlab.tasks.tracking.mdp import terminations as upstream_terminations
 
-  from tracking_bfm.tasks.tracking.mdp import observations, terminations
+  from tracking_bfm.tasks.tracking.mdp import (
+    metrics,
+    observations,
+    rewards,
+    terminations,
+  )
 
   assert observations.__all__ == [
     "motion_anchor_ori_b",
@@ -159,6 +166,28 @@ def test_tracking_reuses_upstream_observation_and_termination_terms() -> None:
     "bad_anchor_pos_z_only",
     "bad_motion_body_pos",
     "bad_motion_body_pos_z_only",
+  ]
+  assert metrics.__all__ == [
+    "compute_mpkpe",
+    "compute_root_relative_mpkpe",
+    "compute_joint_velocity_error",
+    "compute_ee_position_error",
+    "compute_ee_orientation_error",
+  ]
+  assert rewards.__all__ == [
+    "motion_global_anchor_position_error_exp",
+    "motion_global_anchor_orientation_error_exp",
+    "motion_relative_body_position_error_exp",
+    "motion_relative_body_orientation_error_exp",
+    "motion_global_body_linear_velocity_error_exp",
+    "motion_global_body_angular_velocity_error_exp",
+    "self_collision_cost",
+    "motion_global_body_position_error_exp",
+    "motion_global_body_orientation_error_exp",
+    "motion_pelvis_limb_ee_position_error_exp",
+    "motion_pelvis_limb_ee_orientation_error_exp",
+    "motion_global_body_height_error_exp",
+    "joint_action_rate_l2",
   ]
 
   for name in (
@@ -177,6 +206,37 @@ def test_tracking_reuses_upstream_observation_and_termination_terms() -> None:
     "bad_motion_body_pos_z_only",
   ):
     assert getattr(terminations, name) is getattr(upstream_terminations, name)
+
+  for name in (
+    "compute_mpkpe",
+    "compute_root_relative_mpkpe",
+    "compute_joint_velocity_error",
+    "compute_ee_position_error",
+    "compute_ee_orientation_error",
+  ):
+    assert getattr(metrics, name) is getattr(upstream_metrics, name)
+
+  for name in (
+    "motion_global_anchor_position_error_exp",
+    "motion_global_anchor_orientation_error_exp",
+    "motion_relative_body_position_error_exp",
+    "motion_relative_body_orientation_error_exp",
+    "motion_global_body_linear_velocity_error_exp",
+    "motion_global_body_angular_velocity_error_exp",
+    "self_collision_cost",
+  ):
+    assert getattr(rewards, name) is getattr(upstream_rewards, name)
+
+  for name in (
+    "motion_global_body_position_error_exp",
+    "motion_global_body_orientation_error_exp",
+    "motion_pelvis_limb_ee_position_error_exp",
+    "motion_pelvis_limb_ee_orientation_error_exp",
+    "motion_global_body_height_error_exp",
+    "joint_action_rate_l2",
+  ):
+    assert hasattr(rewards, name)
+    assert not hasattr(upstream_rewards, name)
 
 
 def test_tracking_mdp_namespace_keeps_local_motion_command_exports() -> None:
