@@ -12,8 +12,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
   parser = argparse.ArgumentParser(
     description="Export a tracking-bfm checkpoint to an ONNX file."
   )
-  parser.add_argument("--checkpoint", required=True, help="Path to the source .pt file.")
-  parser.add_argument("--task-id", required=True, help="Registered tracking_bfm task id.")
+  parser.add_argument(
+    "--checkpoint", required=True, help="Path to the source .pt file."
+  )
+  parser.add_argument(
+    "--task-id", required=True, help="Registered tracking_bfm task id."
+  )
   parser.add_argument(
     "--checkpoint-family",
     choices=["auto", "tracking", "distillation"],
@@ -67,8 +71,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     default=None,
     help="Optional ONNX filename. Defaults to deploy_<checkpoint_stem>.onnx.",
   )
-  parser.add_argument("--robot-name", default=None, help="Optional robot name metadata.")
-  parser.add_argument("--device", default="cpu", help="Device used to rebuild the actor.")
+  parser.add_argument(
+    "--robot-name", default=None, help="Optional robot name metadata."
+  )
+  parser.add_argument(
+    "--device", default="cpu", help="Device used to rebuild the actor."
+  )
   parser.add_argument(
     "--overwrite",
     action="store_true",

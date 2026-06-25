@@ -19,7 +19,9 @@ def load_latent_decoder(env, train_cfg: dict, device: str) -> torch.nn.Module:
 
   checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
   if checkpoint.get("model_type") != "latent":
-    raise ValueError("latent decoder checkpoint must be a latent distillation checkpoint.")
+    raise ValueError(
+      "latent decoder checkpoint must be a latent distillation checkpoint."
+    )
   state_dict = checkpoint.get("policy_state_dict")
   if state_dict is None:
     raise ValueError("latent decoder checkpoint is missing policy_state_dict.")

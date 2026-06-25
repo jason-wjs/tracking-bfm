@@ -26,7 +26,9 @@ def build_parser() -> argparse.ArgumentParser:
   parser.add_argument("--wandb-checkpoint-name")
   parser.add_argument("--checkpoint-file")
   parser.add_argument("--motion-path")
-  parser.add_argument("--motion-type", choices=["isaaclab", "mujoco"], default="isaaclab")
+  parser.add_argument(
+    "--motion-type", choices=["isaaclab", "mujoco"], default="isaaclab"
+  )
   parser.add_argument("--history-steps", type=int)
   parser.add_argument("--future-steps", type=int)
   parser.add_argument("--num-envs", type=int, default=1024)

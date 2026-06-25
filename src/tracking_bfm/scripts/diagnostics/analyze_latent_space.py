@@ -86,8 +86,16 @@ def _apply_latent_analysis_overrides(env_cfg, cfg: LatentSpaceAnalysisConfig) ->
   if cfg.proprio_history_length is not None:
     proprio_group = env_cfg.observations.get("proprio_actor")
     if proprio_group is None:
-      raise ValueError("Latent analysis expects an observation group named 'proprio_actor'.")
-    for term_name in ("projected_gravity", "base_ang_vel", "joint_pos", "joint_vel", "actions"):
+      raise ValueError(
+        "Latent analysis expects an observation group named 'proprio_actor'."
+      )
+    for term_name in (
+      "projected_gravity",
+      "base_ang_vel",
+      "joint_pos",
+      "joint_vel",
+      "actions",
+    ):
       term = proprio_group.terms.get(term_name)
       if term is None:
         raise ValueError(f"proprio_actor is missing term {term_name!r}.")
@@ -141,7 +149,9 @@ def collect_latent_batches(
   return {key: torch.cat(value, dim=0) for key, value in collected.items()}
 
 
-def _normalize_to_unit_sphere(samples: torch.Tensor, eps: float = 1.0e-12) -> torch.Tensor:
+def _normalize_to_unit_sphere(
+  samples: torch.Tensor, eps: float = 1.0e-12
+) -> torch.Tensor:
   norms = torch.linalg.vector_norm(samples, dim=-1, keepdim=True)
   return samples / torch.clamp(norms, min=eps)
 
@@ -245,7 +255,9 @@ def summarize_latents(latents: dict[str, torch.Tensor]) -> dict[str, Any]:
     "z_std_min": float(z_stats.std(dim=0, unbiased=False).min().item()),
     "z_std_max": float(z_stats.std(dim=0, unbiased=False).max().item()),
     "latent_std_mean": float(torch.exp(log_std_stats).mean().item()),
-    "cov_offdiag_mean_abs": float(offdiag.abs().mean().item()) if offdiag.numel() else 0.0,
+    "cov_offdiag_mean_abs": float(offdiag.abs().mean().item())
+    if offdiag.numel()
+    else 0.0,
     "radius_mean": float(radius.mean().item()),
     "radius_std": float(radius.std(unbiased=False).item()),
     "radius_q05": float(torch.quantile(radius, 0.05).item()),
@@ -344,7 +356,9 @@ def save_latent_plots(
 
 def run_analysis(task_id: str, cfg: LatentSpaceAnalysisConfig) -> Path:
   configure_torch_backends()
-  device = torch.device(cfg.device or ("cuda:0" if torch.cuda.is_available() else "cpu"))
+  device = torch.device(
+    cfg.device or ("cuda:0" if torch.cuda.is_available() else "cpu")
+  )
 
   env_cfg = load_env_cfg(task_id)
   agent_cfg = load_rl_cfg(task_id)
@@ -359,9 +373,14 @@ def run_analysis(task_id: str, cfg: LatentSpaceAnalysisConfig) -> Path:
   if runner_cls is None:
     raise ValueError(f"Task {task_id} does not define a runner class")
   runner = runner_cls(wrapped_env, asdict(agent_cfg), log_dir=None, device=str(device))
-  runner.load(cfg.checkpoint_file, load_cfg={"actor": True}, strict=True, map_location=str(device))
+  runner.load(
+    cfg.checkpoint_file, load_cfg={"actor": True}, strict=True, map_location=str(device)
+  )
   policy = runner.student_policy
-  if not all(hasattr(policy, name) for name in ("encode", "decode", "encoder_obs_group", "decoder_obs_group")):
+  if not all(
+    hasattr(policy, name)
+    for name in ("encode", "decode", "encoder_obs_group", "decoder_obs_group")
+  ):
     raise ValueError("Checkpoint policy is not a latent distillation policy")
 
   try:
@@ -377,9 +396,13 @@ def run_analysis(task_id: str, cfg: LatentSpaceAnalysisConfig) -> Path:
 
   output_dir = Path(cfg.output_dir)
   output_dir.mkdir(parents=True, exist_ok=True)
-  np.savez_compressed(output_dir / "latents.npz", **{k: v.numpy() for k, v in latents.items()})
+  np.savez_compressed(
+    output_dir / "latents.npz", **{k: v.numpy() for k, v in latents.items()}
+  )
   summary = summarize_latents(latents)
-  (output_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+  (output_dir / "summary.json").write_text(
+    json.dumps(summary, indent=2), encoding="utf-8"
+  )
   save_latent_plots(
     latents,
     output_dir,

@@ -300,7 +300,9 @@ class WbTeleopPPO(PPO):
   def update_bc_only(self) -> dict[str, float]:
     """Update only the actor with teacher-action MSE from collected rollout obs."""
     if self.teacher_adapter is None:
-      raise ValueError("teacher_adapter must be set before WbTeleopPPO.update_bc_only()")
+      raise ValueError(
+        "teacher_adapter must be set before WbTeleopPPO.update_bc_only()"
+      )
 
     observations = self.storage.observations.flatten(0, 1)
     batch_size = observations.batch_size[0]
@@ -376,9 +378,7 @@ class WbTeleopPPO(PPO):
       default_sets.append("rnd_state")
     cfg["obs_groups"] = resolve_obs_groups(obs, cfg["obs_groups"], default_sets)
 
-    cfg["algorithm"] = resolve_rnd_config(
-      cfg["algorithm"], obs, cfg["obs_groups"], env
-    )
+    cfg["algorithm"] = resolve_rnd_config(cfg["algorithm"], obs, cfg["obs_groups"], env)
     cfg["algorithm"] = resolve_symmetry_config(cfg["algorithm"], env)
 
     actor: MLPModel = actor_class(
@@ -420,5 +420,7 @@ class WbTeleopPPO(PPO):
     for param in all_params:
       if param.grad is not None:
         numel = param.numel()
-        param.grad.data.copy_(all_grads[offset : offset + numel].view_as(param.grad.data))
+        param.grad.data.copy_(
+          all_grads[offset : offset + numel].view_as(param.grad.data)
+        )
         offset += numel

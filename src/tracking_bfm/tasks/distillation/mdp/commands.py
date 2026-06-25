@@ -95,7 +95,9 @@ def _gather_student_body_field(
     device=command.time_steps.device,
   )
   reference_time_steps = command.time_steps.unsqueeze(1) + offsets.unsqueeze(0)
-  values = command._gather_motion_field(field_name, command.motion_idx, reference_time_steps)
+  values = command._gather_motion_field(
+    field_name, command.motion_idx, reference_time_steps
+  )
   if field_name == "body_pos_w":
     values = values + command._env.scene.env_origins[:, None, None, :]
   return values
@@ -133,7 +135,9 @@ def student_ee_pose_b(
   body_pos = body_pos_w[:, :, body_indexes, :]
   body_quat = body_quat_w[:, :, body_indexes, :]
 
-  pos_b, quat_b = subtract_frame_transforms(anchor_pos, anchor_quat, body_pos, body_quat)
+  pos_b, quat_b = subtract_frame_transforms(
+    anchor_pos, anchor_quat, body_pos, body_quat
+  )
   rot6d = matrix_from_quat(quat_b)[..., :2].reshape(
     env.num_envs, -1, len(body_indexes), 6
   )
@@ -324,8 +328,12 @@ def get_student_ee_reference_robot_pelvis_w(
 
   robot = env.scene["robot"]
   robot_pelvis_index = robot.body_names.index(pelvis_body_name)
-  robot_pelvis_pos_w = robot.data.body_link_pos_w[:, robot_pelvis_index : robot_pelvis_index + 1, :]
-  robot_pelvis_quat_w = robot.data.body_link_quat_w[:, robot_pelvis_index : robot_pelvis_index + 1, :]
+  robot_pelvis_pos_w = robot.data.body_link_pos_w[
+    :, robot_pelvis_index : robot_pelvis_index + 1, :
+  ]
+  robot_pelvis_quat_w = robot.data.body_link_quat_w[
+    :, robot_pelvis_index : robot_pelvis_index + 1, :
+  ]
   return robot_pelvis_pos_w + quat_apply(
     robot_pelvis_quat_w.repeat(1, ee_rel_pelvis.shape[1], 1),
     ee_rel_pelvis,

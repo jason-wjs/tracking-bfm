@@ -40,7 +40,10 @@ def mix_rollout_actions(
     )
   else:
     probs = torch.full(
-      (student_actions.shape[0],), beta, dtype=torch.float32, device=student_actions.device
+      (student_actions.shape[0],),
+      beta,
+      dtype=torch.float32,
+      device=student_actions.device,
     )
     teacher_mask = torch.bernoulli(probs, generator=generator).to(dtype=torch.bool)
 
@@ -123,17 +126,15 @@ class DistillationRunner:
         free_nats_per_dim=float(self.cfg["free_nats_per_dim"]),
         latent_regularization=self.cfg.get("latent_regularization", "kl"),
         mmd_weight=float(self.cfg.get("mmd_weight", 0.0)),
-        mmd_kernel_scales=tuple(self.cfg.get("mmd_kernel_scales", (0.5, 1.0, 2.0, 4.0))),
+        mmd_kernel_scales=tuple(
+          self.cfg.get("mmd_kernel_scales", (0.5, 1.0, 2.0, 4.0))
+        ),
         mmd_max_samples=int(self.cfg.get("mmd_max_samples", 1024)),
         latent_smooth_weight=float(self.cfg["latent_smooth_weight"]),
         latent_smooth_max_pairs=int(self.cfg.get("latent_smooth_max_pairs", 2048)),
         sphere_radius=float(self.cfg.get("sphere_radius", -1.0)),
-        sphere_orthonormal_weight=float(
-          self.cfg.get("sphere_orthonormal_weight", 0.0)
-        ),
-        sphere_knn_smooth_weight=float(
-          self.cfg.get("sphere_knn_smooth_weight", 0.0)
-        ),
+        sphere_orthonormal_weight=float(self.cfg.get("sphere_orthonormal_weight", 0.0)),
+        sphere_knn_smooth_weight=float(self.cfg.get("sphere_knn_smooth_weight", 0.0)),
         sphere_knn_k=int(self.cfg.get("sphere_knn_k", 4)),
         sphere_knn_max_samples=int(self.cfg.get("sphere_knn_max_samples", 2048)),
         sphere_eps=float(self.cfg.get("sphere_eps", 1.0e-6)),
@@ -252,7 +253,11 @@ class DistillationRunner:
       self.alg.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     self.current_learning_iteration = checkpoint.get("iter", 0)
     infos = checkpoint.get("infos")
-    if infos and "env_state" in infos and hasattr(self.env.unwrapped, "common_step_counter"):
+    if (
+      infos
+      and "env_state" in infos
+      and hasattr(self.env.unwrapped, "common_step_counter")
+    ):
       self.env.unwrapped.common_step_counter = infos["env_state"]["common_step_counter"]
     return infos
 
@@ -273,7 +278,9 @@ class DistillationRunner:
 
     rewbuffer = deque(maxlen=100)
     lenbuffer = deque(maxlen=100)
-    cur_reward_sum = torch.zeros(self.env.num_envs, dtype=torch.float32, device=self.device)
+    cur_reward_sum = torch.zeros(
+      self.env.num_envs, dtype=torch.float32, device=self.device
+    )
     cur_episode_length = torch.zeros(
       self.env.num_envs, dtype=torch.float32, device=self.device
     )
@@ -357,8 +364,7 @@ class DistillationRunner:
           num_mini_batches=int(self.cfg["num_mini_batches"]),
         )
       self.last_loss_dict = {
-        key: self._distributed_mean(value)
-        for key, value in update_metrics.items()
+        key: self._distributed_mean(value) for key, value in update_metrics.items()
       }
       learn_time = time.time() - learn_start
 
@@ -392,7 +398,9 @@ class DistillationRunner:
           self.save(os.path.join(self.log_dir, f"model_{it}.pt"))
 
     if self.log_dir is not None and not self.disable_logs:
-      self.save(os.path.join(self.log_dir, f"model_{self.current_learning_iteration}.pt"))
+      self.save(
+        os.path.join(self.log_dir, f"model_{self.current_learning_iteration}.pt")
+      )
     if not self.disable_logs:
       self.logger.stop_logging_writer()
 
@@ -515,9 +523,7 @@ class DistillationRunner:
       self.writer.add_scalar(f"Metrics/{key}", value, it)
 
     if "mean_reward" in env_metrics:
-      self.writer.add_scalar(
-        "Reward/mean_reward", env_metrics["mean_reward"], it
-      )
+      self.writer.add_scalar("Reward/mean_reward", env_metrics["mean_reward"], it)
       self.writer.add_scalar(
         "Metrics/mean_episode_length",
         env_metrics["mean_episode_length"],

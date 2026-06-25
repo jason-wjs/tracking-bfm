@@ -21,7 +21,7 @@ def unitree_g1_latent_velocity_ppo_runner_cfg() -> LatentVelocityPpoRunnerCfg:
   """Create PPO runner configuration for Unitree G1 latent velocity RL."""
   return LatentVelocityPpoRunnerCfg(
     actor=RslRlModelCfg(
-      hidden_dims=(1024,1024,512,512, 256, 128),
+      hidden_dims=(1024, 1024, 512, 512, 256, 128),
       activation="elu",
       obs_normalization=True,
       distribution_cfg={
@@ -31,7 +31,7 @@ def unitree_g1_latent_velocity_ppo_runner_cfg() -> LatentVelocityPpoRunnerCfg:
       },
     ),
     critic=RslRlModelCfg(
-      hidden_dims=(1024,1024,512,512, 256, 128),
+      hidden_dims=(1024, 1024, 512, 512, 256, 128),
       activation="elu",
       obs_normalization=True,
     ),

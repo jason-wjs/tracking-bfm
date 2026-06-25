@@ -15,7 +15,9 @@ def build_parser() -> argparse.ArgumentParser:
     prog="tracking-bfm-delete-failed-motions",
     description="Delete failed motion files from a filtering report.",
   )
-  parser.add_argument("--report-file", required=True, help="Filtering report JSON file.")
+  parser.add_argument(
+    "--report-file", required=True, help="Filtering report JSON file."
+  )
   parser.add_argument(
     "--execute",
     action="store_true",
@@ -51,8 +53,7 @@ def main(argv: list[str] | None = None) -> None:
     print("[DRY-RUN] Re-run with --execute to remove files.")
   else:
     print(
-      f"[INFO] Deleted {result.deleted_count} motion files from "
-      f"{result.report_file}."
+      f"[INFO] Deleted {result.deleted_count} motion files from {result.report_file}."
     )
 
   if result.missing_count:

@@ -31,14 +31,14 @@ def _make_unitree_g1_latent_rl_env_cfg(
   """Adapt a Unitree G1 velocity config for latent-space RL."""
   for reward_name in _LATENT_REMOVED_REWARDS:
     cfg.rewards.pop(reward_name, None)
-  cfg.rewards["track_linear_velocity"].func = (
-    latent_velocity_rewards.track_linear_velocity
-  )
+  cfg.rewards[
+    "track_linear_velocity"
+  ].func = latent_velocity_rewards.track_linear_velocity
   cfg.rewards["track_linear_velocity"].weight = 3.0
   cfg.rewards["track_linear_velocity"].params["penalize_z_velocity"] = False
-  cfg.rewards["track_angular_velocity"].func = (
-    latent_velocity_rewards.track_angular_velocity
-  )
+  cfg.rewards[
+    "track_angular_velocity"
+  ].func = latent_velocity_rewards.track_angular_velocity
   cfg.rewards["track_angular_velocity"].weight = 3.0
   cfg.rewards["track_angular_velocity"].params["penalize_xy_angular_velocity"] = False
   cfg.rewards["action_rate_l2"].weight = -0.2

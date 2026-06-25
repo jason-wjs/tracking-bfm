@@ -49,7 +49,9 @@ def _reference_time_window(
   offsets = list(range(-history_steps, 0))
   offsets.append(0)
   offsets.extend(range(1, future_steps))
-  offsets_tensor = torch.tensor(offsets, device=command.time_steps.device, dtype=torch.long)
+  offsets_tensor = torch.tensor(
+    offsets, device=command.time_steps.device, dtype=torch.long
+  )
   reference_time_steps = command.time_steps.unsqueeze(1) + offsets_tensor.unsqueeze(0)
   body_pos_w = command._gather_motion_field(
     "body_pos_w", command.motion_idx, reference_time_steps
@@ -76,9 +78,9 @@ def _limb_pose_in_anchor_frame(
   anchor_pos_w = body_pos_w[:, :, anchor_body_index : anchor_body_index + 1, :].repeat(
     1, 1, len(body_indexes), 1
   )
-  anchor_quat_w = body_quat_w[:, :, anchor_body_index : anchor_body_index + 1, :].repeat(
-    1, 1, len(body_indexes), 1
-  )
+  anchor_quat_w = body_quat_w[
+    :, :, anchor_body_index : anchor_body_index + 1, :
+  ].repeat(1, 1, len(body_indexes), 1)
   limb_pos_w = body_pos_w[:, :, body_indexes, :]
   limb_quat_w = body_quat_w[:, :, body_indexes, :]
 

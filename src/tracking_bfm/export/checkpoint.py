@@ -17,8 +17,7 @@ def detect_checkpoint_family(checkpoint: Mapping[str, Any]) -> CheckpointFamily:
   if "policy_state_dict" in checkpoint:
     return "distillation"
   raise ValueError(
-    "Unsupported checkpoint format: expected `actor_state_dict` or "
-    "`policy_state_dict`."
+    "Unsupported checkpoint format: expected `actor_state_dict` or `policy_state_dict`."
   )
 
 
@@ -65,6 +64,7 @@ def load_checkpoint(
     map_location=map_location,
     weights_only=False,
   )
+
 
 __all__ = [
   "CheckpointFamily",

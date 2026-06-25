@@ -103,15 +103,15 @@ def run_train(task_id: str, cfg: TrainConfig, log_dir: Path) -> None:
     if source_shape == "single":
       motion_label = "motion file"
       motion_arg = "--env.commands.motion.motion-file /path/to/motion.npz"
-      has_local_motion = bool(motion_cmd.motion_file) and Path(
-        motion_cmd.motion_file
-      ).exists()
+      has_local_motion = (
+        bool(motion_cmd.motion_file) and Path(motion_cmd.motion_file).exists()
+      )
     else:
       motion_label = "motion path"
       motion_arg = "--env.commands.motion.motion-path /path/to/motions_dir"
-      has_local_motion = bool(motion_cmd.motion_path) and Path(
-        motion_cmd.motion_path
-      ).is_dir()
+      has_local_motion = (
+        bool(motion_cmd.motion_path) and Path(motion_cmd.motion_path).is_dir()
+      )
 
     if has_local_motion:
       if source_shape == "single":

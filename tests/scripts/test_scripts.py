@@ -235,7 +235,9 @@ def test_play_demo_mode_sets_uniform_sampling() -> None:
 def test_inspect_checkpoint_prints_json(tmp_path: Path, capsys) -> None:
   torch = pytest.importorskip("torch")
   checkpoint_path = tmp_path / "model_1.pt"
-  torch.save({"iter": 1, "actor_state_dict": {"weight": torch.ones(1)}}, checkpoint_path)
+  torch.save(
+    {"iter": 1, "actor_state_dict": {"weight": torch.ones(1)}}, checkpoint_path
+  )
 
   from tracking_bfm.scripts.diagnostics.inspect_checkpoint import main
 

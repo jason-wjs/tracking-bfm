@@ -183,7 +183,9 @@ def _resolve_motion_root(cfg: EvaluateConfig | Any) -> str:
   return str(source.path)
 
 
-def _resolve_checkpoint_path(task_id: str, cfg: EvaluateConfig | Any) -> tuple[Path, str]:
+def _resolve_checkpoint_path(
+  task_id: str, cfg: EvaluateConfig | Any
+) -> tuple[Path, str]:
   from mjlab.tasks.registry import load_rl_cfg
   from mjlab.utils.os import get_wandb_checkpoint_path
 
@@ -384,9 +386,7 @@ def _rank_output_path(output_file: str, rank: int, world_size: int) -> Path:
 
 def _prepare_launch_cfg(cfg: EvaluateConfig | Any) -> EvaluateConfig | Any:
   if (
-    isinstance(cfg, EvaluateConfig)
-    and cfg.gpu_ids is not None
-    and cfg.viewer != "none"
+    isinstance(cfg, EvaluateConfig) and cfg.gpu_ids is not None and cfg.viewer != "none"
   ):
     print(
       "[INFO] gpu_ids provided; forcing viewer=none to avoid multi-process viewer "

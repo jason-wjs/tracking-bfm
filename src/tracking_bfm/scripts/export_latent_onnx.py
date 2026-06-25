@@ -25,7 +25,9 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     required=True,
     help="Path to the latent distillation decoder .pt checkpoint.",
   )
-  parser.add_argument("--task-id", required=True, help="Registered latent tracking task id.")
+  parser.add_argument(
+    "--task-id", required=True, help="Registered latent tracking task id."
+  )
   parser.add_argument(
     "--obs-group",
     default="actor",
@@ -57,7 +59,9 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     default=None,
     help="Optional ONNX filename. Defaults to deploy_<checkpoint_stem>.onnx.",
   )
-  parser.add_argument("--robot-name", default=None, help="Optional robot name metadata.")
+  parser.add_argument(
+    "--robot-name", default=None, help="Optional robot name metadata."
+  )
   parser.add_argument("--device", default="cpu", help="Device used to rebuild models.")
   parser.add_argument(
     "--overwrite",

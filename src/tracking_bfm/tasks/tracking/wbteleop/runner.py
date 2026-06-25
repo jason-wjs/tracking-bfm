@@ -52,9 +52,7 @@ class WbTeleopTrackingRunner(MotionTrackingOnPolicyRunner):
     algorithm_cfg = self.cfg.get("algorithm", {})
     checkpoint_path = algorithm_cfg.get("teacher_checkpoint_path", "")
     if not checkpoint_path:
-      raise ValueError(
-        "teacher_checkpoint_path must be provided for wbteleop training"
-      )
+      raise ValueError("teacher_checkpoint_path must be provided for wbteleop training")
 
     teacher_task_id = algorithm_cfg.get(
       "teacher_task_id",
@@ -114,7 +112,9 @@ class WbTeleopTrackingRunner(MotionTrackingOnPolicyRunner):
           actions = student_actions
           if getattr(self.alg, "pure_bc_rollout", "student") == "teacher":
             if self.teacher_adapter is None:
-              raise ValueError("teacher_adapter must be set for teacher pure_bc_rollout")
+              raise ValueError(
+                "teacher_adapter must be set for teacher pure_bc_rollout"
+              )
             actions = self.teacher_adapter.act_mean(obs)
 
           obs, rewards, dones, extras = self.env.step(actions.to(self.env.device))
@@ -150,7 +150,9 @@ class WbTeleopTrackingRunner(MotionTrackingOnPolicyRunner):
         loss_dict=loss_dict,
         learning_rate=self.alg.learning_rate,
         action_std=self.alg.get_policy().output_std,
-        rnd_weight=(self.alg.rnd.weight if self.cfg["algorithm"].get("rnd_cfg") else None),
+        rnd_weight=(
+          self.alg.rnd.weight if self.cfg["algorithm"].get("rnd_cfg") else None
+        ),
       )
 
       if self.logger.writer is not None and it % self.cfg["save_interval"] == 0:
@@ -238,14 +240,18 @@ class WbTeleopTrackingRunner(MotionTrackingOnPolicyRunner):
       if key.startswith("actor."):
         actor_state_dict[key.replace("actor.", "mlp.")] = value
       elif key.startswith("actor_obs_normalizer."):
-        actor_state_dict[key.replace("actor_obs_normalizer.", "obs_normalizer.")] = value
+        actor_state_dict[key.replace("actor_obs_normalizer.", "obs_normalizer.")] = (
+          value
+        )
       elif key in ["std", "log_std"]:
         actor_state_dict[key] = value
 
       if key.startswith("critic."):
         critic_state_dict[key.replace("critic.", "mlp.")] = value
       elif key.startswith("critic_obs_normalizer."):
-        critic_state_dict[key.replace("critic_obs_normalizer.", "obs_normalizer.")] = value
+        critic_state_dict[key.replace("critic_obs_normalizer.", "obs_normalizer.")] = (
+          value
+        )
     return {
       "actor_state_dict": actor_state_dict,
       "critic_state_dict": critic_state_dict,

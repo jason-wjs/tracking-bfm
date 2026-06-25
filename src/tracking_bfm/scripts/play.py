@@ -80,7 +80,9 @@ class PlayCliConfig(PlayConfig):
     return PlayCliConfig(env=load_env_cfg(task_id, play=True), rl=load_rl_cfg(task_id))
 
 
-def _configure_distillation_play_visualization(env_cfg, show_reference_motion: bool) -> None:
+def _configure_distillation_play_visualization(
+  env_cfg, show_reference_motion: bool
+) -> None:
   motion_cfg = env_cfg.commands.get("motion")
   student_sparse_vis_cfg = env_cfg.commands.get("student_sparse_vis")
   if motion_cfg is None or student_sparse_vis_cfg is None:
@@ -179,7 +181,9 @@ def run_play(task_id: str, cfg: PlayConfig):
     if isinstance(cfg, PlayCliConfig)
     else load_env_cfg(task_id, play=True)
   )
-  agent_cfg = deepcopy(cfg.rl) if isinstance(cfg, PlayCliConfig) else load_rl_cfg(task_id)
+  agent_cfg = (
+    deepcopy(cfg.rl) if isinstance(cfg, PlayCliConfig) else load_rl_cfg(task_id)
+  )
 
   DUMMY_MODE = cfg.agent in {"zero", "random"}
   TRAINED_MODE = not DUMMY_MODE
@@ -270,7 +274,9 @@ def run_play(task_id: str, cfg: PlayConfig):
     runner.load(
       str(resume_path), load_cfg={"actor": True}, strict=True, map_location=device
     )
-    policy = _get_trained_policy(runner, device=device, stochastic=cfg.stochastic_policy)
+    policy = _get_trained_policy(
+      runner, device=device, stochastic=cfg.stochastic_policy
+    )
     env = runner.env
 
   # Build checkpoint manager for hot-swapping checkpoints in the viewer.

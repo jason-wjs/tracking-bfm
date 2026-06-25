@@ -20,18 +20,26 @@ class DistillationRunnerCfg(RslRlBaseRunnerCfg):
   beta_start: float = 1.0
   beta_end: float = 0.0
   beta_decay_steps: int = 2_00
-  student_hidden_dims: tuple[int, ...] = field(default_factory=lambda: (4096,2048,2048,1024, 1024, 1024, 512, 256, 128))
+  student_hidden_dims: tuple[int, ...] = field(
+    default_factory=lambda: (4096, 2048, 2048, 1024, 1024, 1024, 512, 256, 128)
+  )
   student_activation: str = "elu"
   latent_dim: int = 64
-  encoder_hidden_dims: tuple[int, ...] = field(default_factory=lambda: (2048,2048,1024, 512, 256))
-  decoder_hidden_dims: tuple[int, ...] = field(default_factory=lambda: (2048,2048,1024, 1024, 512, 256, 128))
+  encoder_hidden_dims: tuple[int, ...] = field(
+    default_factory=lambda: (2048, 2048, 1024, 512, 256)
+  )
+  decoder_hidden_dims: tuple[int, ...] = field(
+    default_factory=lambda: (2048, 2048, 1024, 1024, 512, 256, 128)
+  )
   latent_activation: str = "elu"
   latent_regularization: Literal["kl", "wae_mmd", "bfmzero_sphere"] = "kl"
   kl_weight: float = 1.0e-4
   kl_warmup_iterations: int = 2_000
   free_nats_per_dim: float = 0.02
   mmd_weight: float = 0.0
-  mmd_kernel_scales: tuple[float, ...] = field(default_factory=lambda: (0.5, 1.0, 2.0, 4.0))
+  mmd_kernel_scales: tuple[float, ...] = field(
+    default_factory=lambda: (0.5, 1.0, 2.0, 4.0)
+  )
   mmd_max_samples: int = 1024
   latent_smooth_weight: float = 1.0e-3
   latent_smooth_max_pairs: int = 2048

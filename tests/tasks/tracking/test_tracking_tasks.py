@@ -50,7 +50,9 @@ def test_legacy_multi_commands_import_preserves_motion_command_identity() -> Non
     legacy_multi_commands.MultiMotionCommandCfg
     is multi_motion_command.MultiMotionCommandCfg
   )
-  assert legacy_multi_commands.MultiMotionCommand is multi_motion_command.MultiMotionCommand
+  assert (
+    legacy_multi_commands.MultiMotionCommand is multi_motion_command.MultiMotionCommand
+  )
 
 
 @pytest.mark.parametrize(
@@ -162,9 +164,13 @@ def test_tracking_bfm_uses_multi_motion_command_and_full_reference_actor() -> No
   cfg = load_env_cfg(PRIMARY_TRACKING_ID)
 
   assert isinstance(cfg.commands["motion"], MotionCommandCfg)
-  assert {"command", "motion_anchor_pos_b", "motion_anchor_ori_b", "body_pos", "body_ori"}.issubset(
-    _term_names(PRIMARY_TRACKING_ID)
-  )
+  assert {
+    "command",
+    "motion_anchor_pos_b",
+    "motion_anchor_ori_b",
+    "body_pos",
+    "body_ori",
+  }.issubset(_term_names(PRIMARY_TRACKING_ID))
 
 
 def test_tracking_bfm_1stage_uses_sparse_student_actor_terms() -> None:
@@ -183,7 +189,9 @@ def test_tracking_bfm_1stage_uses_sparse_student_actor_terms() -> None:
   }.issubset(_term_names(PRIMARY_1STAGE_ID))
 
 
-def test_tracking_bfm_wbteleop_exposes_teacher_and_limb_reference_student_actor() -> None:
+def test_tracking_bfm_wbteleop_exposes_teacher_and_limb_reference_student_actor() -> (
+  None
+):
   cfg = load_env_cfg(PRIMARY_WBTELEOP_ID)
 
   assert "teacher_actor" in cfg.observations
