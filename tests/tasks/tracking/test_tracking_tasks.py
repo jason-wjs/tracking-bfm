@@ -15,12 +15,10 @@ from tracking_bfm.tasks.tracking.wbteleop.runner import WbTeleopTrackingRunner
 PRIMARY_TRACKING_ID = "Mjlab-TrackingBFM-Flat-Unitree-G1"
 PRIMARY_1STAGE_ID = "Mjlab-TrackingBFM-Flat-Unitree-G1-1Stage"
 PRIMARY_WBTELEOP_ID = "Mjlab-TrackingBFM-Flat-Unitree-G1-WBTeleop"
-PENDING_TRACKING_LEGACY_IDS = {
-  "Mjlab-TrackingBFM-Flat-Unitree-G1-TestOptimal",
-  "Mjlab-Trackingbfm-Flat-Unitree-G1-TestOptimal",
-  "Mjlab-TrackingBFM-Flat-Unitree-G1-TestOptimal-NoRegNoDR",
-  "Mjlab-Trackingbfm-Flat-Unitree-G1-TestOptimal-NoRegNoDR",
-}
+PRIMARY_TEST_OPTIMAL_ID = "Mjlab-TrackingBFM-Flat-Unitree-G1-TestOptimal"
+PRIMARY_TEST_OPTIMAL_NO_REG_NO_DR_ID = (
+  "Mjlab-TrackingBFM-Flat-Unitree-G1-TestOptimal-NoRegNoDR"
+)
 REMOVED_TRACKING_LEGACY_IDS = {
   "Mjlab-TrackingBFM-Flat-Unitree-G1-ActionTrunk",
   "Mjlab-Trackingbfm-Flat-Unitree-G1-ActionTrunk",
@@ -41,6 +39,10 @@ def test_tracking_tasks_register_primary_ids_and_legacy_aliases() -> None:
     "Mjlab-Trackingbfm-Flat-Unitree-G1-1Stage",
     PRIMARY_WBTELEOP_ID,
     "Mjlab-Trackingbfm-Flat-Unitree-G1-wbteleop",
+    PRIMARY_TEST_OPTIMAL_ID,
+    "Mjlab-Trackingbfm-Flat-Unitree-G1-TestOptimal",
+    PRIMARY_TEST_OPTIMAL_NO_REG_NO_DR_ID,
+    "Mjlab-Trackingbfm-Flat-Unitree-G1-TestOptimal-NoRegNoDR",
   }.issubset(task_ids)
 
 
@@ -61,6 +63,11 @@ def test_legacy_multi_commands_import_preserves_motion_command_identity() -> Non
     (PRIMARY_TRACKING_ID, "Mjlab-Trackingbfm-Flat-Unitree-G1"),
     (PRIMARY_1STAGE_ID, "Mjlab-Trackingbfm-Flat-Unitree-G1-1Stage"),
     (PRIMARY_WBTELEOP_ID, "Mjlab-Trackingbfm-Flat-Unitree-G1-wbteleop"),
+    (PRIMARY_TEST_OPTIMAL_ID, "Mjlab-Trackingbfm-Flat-Unitree-G1-TestOptimal"),
+    (
+      PRIMARY_TEST_OPTIMAL_NO_REG_NO_DR_ID,
+      "Mjlab-Trackingbfm-Flat-Unitree-G1-TestOptimal-NoRegNoDR",
+    ),
   ],
 )
 def test_tracking_legacy_aliases_resolve_to_matching_task_surface(
@@ -83,22 +90,6 @@ def test_tracking_legacy_aliases_resolve_to_matching_task_surface(
   assert alias_rl.experiment_name == primary_rl.experiment_name
 
 
-def test_pending_tracking_legacy_candidates_are_retained_but_not_registered() -> None:
-  from tracking_bfm.tasks.tracking.config.g1 import env_cfgs
-
-  task_ids = set(list_tasks())
-
-  assert PENDING_TRACKING_LEGACY_IDS.isdisjoint(task_ids)
-  assert callable(env_cfgs.unitree_g1_flat_tracking_bfm_test_optimal_env_cfg)
-
-  cfg = env_cfgs.unitree_g1_flat_tracking_bfm_test_optimal_env_cfg(
-    disable_reg_and_dr=True
-  )
-
-  assert "joint_pos_limits" not in cfg.events
-  assert "push_robot" not in cfg.events
-
-
 def test_removed_action_trunk_is_not_registered_or_exposed() -> None:
   from tracking_bfm.tasks.tracking.config.g1 import env_cfgs, rl_cfg
 
@@ -107,6 +98,47 @@ def test_removed_action_trunk_is_not_registered_or_exposed() -> None:
   assert REMOVED_TRACKING_LEGACY_IDS.isdisjoint(task_ids)
   assert not hasattr(env_cfgs, "unitree_g1_flat_tracking_bfm_action_trunk_env_cfg")
   assert not hasattr(rl_cfg, "unitree_g1_trackingbfm_action_trunk_ppo_runner_cfg")
+
+
+def test_tracking_bfm_test_optimal_uses_full_critic_actor_observations() -> None:
+  cfg = load_env_cfg(PRIMARY_TEST_OPTIMAL_ID)
+
+  actor = cfg.observations["actor"]
+  critic = cfg.observations["critic"]
+
+  assert set(actor.terms) == set(critic.terms)
+  assert actor.enable_corruption is False
+  assert critic.enable_corruption is False
+  assert all(term.noise is None for term in actor.terms.values())
+
+
+def test_tracking_bfm_test_optimal_uses_global_body_pose_rewards() -> None:
+  from tracking_bfm.tasks.tracking import mdp
+
+  cfg = load_env_cfg(PRIMARY_TEST_OPTIMAL_ID)
+
+  assert cfg.rewards["motion_body_pos"].func is (
+    mdp.motion_global_body_position_error_exp
+  )
+  assert cfg.rewards["motion_body_ori"].func is (
+    mdp.motion_global_body_orientation_error_exp
+  )
+
+
+def test_tracking_bfm_test_optimal_no_reg_no_dr_removes_interference() -> None:
+  cfg = load_env_cfg(PRIMARY_TEST_OPTIMAL_NO_REG_NO_DR_ID)
+
+  assert cfg.events == {}
+  assert "action_rate_l2" not in cfg.rewards
+  assert "waist_action_rate_l2" not in cfg.rewards
+  assert "joint_limit" not in cfg.rewards
+  assert "self_collisions" not in cfg.rewards
+
+  motion_cmd = cfg.commands["motion"]
+  assert isinstance(motion_cmd, MotionCommandCfg)
+  assert motion_cmd.pose_range == {}
+  assert motion_cmd.velocity_range == {}
+  assert motion_cmd.joint_position_range == (0.0, 0.0)
 
 
 def test_tracking_reuses_upstream_observation_and_termination_terms() -> None:

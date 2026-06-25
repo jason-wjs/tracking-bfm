@@ -19,6 +19,8 @@ Use these IDs for new training, play, export, and evaluation runs:
 - `Mjlab-TrackingBFM-Flat-Unitree-G1`
 - `Mjlab-TrackingBFM-Flat-Unitree-G1-1Stage`
 - `Mjlab-TrackingBFM-Flat-Unitree-G1-WBTeleop`
+- `Mjlab-TrackingBFM-Flat-Unitree-G1-TestOptimal`
+- `Mjlab-TrackingBFM-Flat-Unitree-G1-TestOptimal-NoRegNoDR`
 - `Mjlab-DistillationBFM-Flat-Unitree-G1`
 - `Mjlab-LatentDistillationBFM-Flat-Unitree-G1`
 - `Mjlab-LatentTrackingBFM-Flat-Unitree-G1-1Stage`
@@ -32,6 +34,8 @@ checkpoints, and scripts. Prefer the primary IDs above in new references.
 - `Mjlab-Trackingbfm-Flat-Unitree-G1`
 - `Mjlab-Trackingbfm-Flat-Unitree-G1-1Stage`
 - `Mjlab-Trackingbfm-Flat-Unitree-G1-wbteleop`
+- `Mjlab-Trackingbfm-Flat-Unitree-G1-TestOptimal`
+- `Mjlab-Trackingbfm-Flat-Unitree-G1-TestOptimal-NoRegNoDR`
 - `Mjlab-Distillation-Flat-Unitree-G1`
 - `Mjlab-LatentDistillation-Flat-Unitree-G1`
 - `Mjlab-LatentTrackingbfm-Flat-Unitree-G1-1Stage`
