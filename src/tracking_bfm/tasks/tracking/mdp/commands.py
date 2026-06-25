@@ -20,6 +20,8 @@ from mjlab.utils.lab_api.math import (
 )
 from mjlab.viewer.debug_visualizer import DebugVisualizer
 
+from tracking_bfm.tasks.tracking.mdp.motion_dataset import ReferenceMotionDataset
+
 if TYPE_CHECKING:
   from collections.abc import Callable
   from typing import Any
@@ -29,190 +31,6 @@ if TYPE_CHECKING:
   from mjlab.envs import ManagerBasedRlEnv
 
 _DESIRED_FRAME_COLORS = ((1.0, 0.5, 0.5), (0.5, 1.0, 0.5), (0.5, 0.5, 1.0))
-
-_ISAACLAB_JOINT_NAMES = [
-  "left_hip_pitch_joint",
-  "right_hip_pitch_joint",
-  "waist_yaw_joint",
-  "left_hip_roll_joint",
-  "right_hip_roll_joint",
-  "waist_roll_joint",
-  "left_hip_yaw_joint",
-  "right_hip_yaw_joint",
-  "waist_pitch_joint",
-  "left_knee_joint",
-  "right_knee_joint",
-  "left_shoulder_pitch_joint",
-  "right_shoulder_pitch_joint",
-  "left_ankle_pitch_joint",
-  "right_ankle_pitch_joint",
-  "left_shoulder_roll_joint",
-  "right_shoulder_roll_joint",
-  "left_ankle_roll_joint",
-  "right_ankle_roll_joint",
-  "left_shoulder_yaw_joint",
-  "right_shoulder_yaw_joint",
-  "left_elbow_joint",
-  "right_elbow_joint",
-  "left_wrist_roll_joint",
-  "right_wrist_roll_joint",
-  "left_wrist_pitch_joint",
-  "right_wrist_pitch_joint",
-  "left_wrist_yaw_joint",
-  "right_wrist_yaw_joint",
-]
-
-_MUJOCO_JOINT_NAMES = [
-  "left_hip_pitch_joint",
-  "left_hip_roll_joint",
-  "left_hip_yaw_joint",
-  "left_knee_joint",
-  "left_ankle_pitch_joint",
-  "left_ankle_roll_joint",
-  "right_hip_pitch_joint",
-  "right_hip_roll_joint",
-  "right_hip_yaw_joint",
-  "right_knee_joint",
-  "right_ankle_pitch_joint",
-  "right_ankle_roll_joint",
-  "waist_yaw_joint",
-  "waist_roll_joint",
-  "waist_pitch_joint",
-  "left_shoulder_pitch_joint",
-  "left_shoulder_roll_joint",
-  "left_shoulder_yaw_joint",
-  "left_elbow_joint",
-  "left_wrist_roll_joint",
-  "left_wrist_pitch_joint",
-  "left_wrist_yaw_joint",
-  "right_shoulder_pitch_joint",
-  "right_shoulder_roll_joint",
-  "right_shoulder_yaw_joint",
-  "right_elbow_joint",
-  "right_wrist_roll_joint",
-  "right_wrist_pitch_joint",
-  "right_wrist_yaw_joint",
-]
-
-_ISAACLAB_BODY_NAMES = [
-  "pelvis",
-  "left_hip_pitch_link",
-  "right_hip_pitch_link",
-  "waist_yaw_link",
-  "left_hip_roll_link",
-  "right_hip_roll_link",
-  "waist_roll_link",
-  "left_hip_yaw_link",
-  "right_hip_yaw_link",
-  "torso_link",
-  "left_knee_link",
-  "right_knee_link",
-  "left_shoulder_pitch_link",
-  "right_shoulder_pitch_link",
-  "left_ankle_pitch_link",
-  "right_ankle_pitch_link",
-  "left_shoulder_roll_link",
-  "right_shoulder_roll_link",
-  "left_ankle_roll_link",
-  "right_ankle_roll_link",
-  "left_shoulder_yaw_link",
-  "right_shoulder_yaw_link",
-  "left_elbow_link",
-  "right_elbow_link",
-  "left_wrist_roll_link",
-  "right_wrist_roll_link",
-  "left_wrist_pitch_link",
-  "right_wrist_pitch_link",
-  "left_wrist_yaw_link",
-  "right_wrist_yaw_link",
-]
-
-_MUJOCO_BODY_NAMES = [
-  "pelvis",
-  "left_hip_pitch_link",
-  "left_hip_roll_link",
-  "left_hip_yaw_link",
-  "left_knee_link",
-  "left_ankle_pitch_link",
-  "left_ankle_roll_link",
-  "right_hip_pitch_link",
-  "right_hip_roll_link",
-  "right_hip_yaw_link",
-  "right_knee_link",
-  "right_ankle_pitch_link",
-  "right_ankle_roll_link",
-  "waist_yaw_link",
-  "waist_roll_link",
-  "torso_link",
-  "left_shoulder_pitch_link",
-  "left_shoulder_roll_link",
-  "left_shoulder_yaw_link",
-  "left_elbow_link",
-  "left_wrist_roll_link",
-  "left_wrist_pitch_link",
-  "left_wrist_yaw_link",
-  "right_shoulder_pitch_link",
-  "right_shoulder_roll_link",
-  "right_shoulder_yaw_link",
-  "right_elbow_link",
-  "right_wrist_roll_link",
-  "right_wrist_pitch_link",
-  "right_wrist_yaw_link",
-]
-
-_ISAACLAB_TO_MUJOCO_JOINT_REINDEX = [
-  _ISAACLAB_JOINT_NAMES.index(name) for name in _MUJOCO_JOINT_NAMES
-]
-_ISAACLAB_TO_MUJOCO_BODY_REINDEX = [
-  _ISAACLAB_BODY_NAMES.index(name) for name in _MUJOCO_BODY_NAMES
-]
-
-
-class MotionLoader:
-  def __init__(
-    self,
-    motion_file: str,
-    body_indexes: torch.Tensor,
-    motion_type: Literal["isaaclab", "mujoco"] = "isaaclab",
-    device: str = "cpu",
-  ) -> None:
-    data = np.load(motion_file)
-    joint_reindex = None
-    body_reindex = None
-    if motion_type == "isaaclab":
-      joint_reindex = _ISAACLAB_TO_MUJOCO_JOINT_REINDEX
-      body_reindex = _ISAACLAB_TO_MUJOCO_BODY_REINDEX
-    elif motion_type != "mujoco":
-      raise ValueError(f"Unsupported motion_type: {motion_type}")
-
-    self.joint_pos = torch.tensor(data["joint_pos"], dtype=torch.float32, device=device)
-    self.joint_vel = torch.tensor(data["joint_vel"], dtype=torch.float32, device=device)
-    self._body_pos_w = torch.tensor(
-      data["body_pos_w"], dtype=torch.float32, device=device
-    )
-    self._body_quat_w = torch.tensor(
-      data["body_quat_w"], dtype=torch.float32, device=device
-    )
-    self._body_lin_vel_w = torch.tensor(
-      data["body_lin_vel_w"], dtype=torch.float32, device=device
-    )
-    self._body_ang_vel_w = torch.tensor(
-      data["body_ang_vel_w"], dtype=torch.float32, device=device
-    )
-    if joint_reindex is not None:
-      self.joint_pos = self.joint_pos[:, joint_reindex]
-      self.joint_vel = self.joint_vel[:, joint_reindex]
-    if body_reindex is not None:
-      self._body_pos_w = self._body_pos_w[:, body_reindex, :]
-      self._body_quat_w = self._body_quat_w[:, body_reindex, :]
-      self._body_lin_vel_w = self._body_lin_vel_w[:, body_reindex, :]
-      self._body_ang_vel_w = self._body_ang_vel_w[:, body_reindex, :]
-    self._body_indexes = body_indexes
-    self.body_pos_w = self._body_pos_w[:, self._body_indexes]
-    self.body_quat_w = self._body_quat_w[:, self._body_indexes]
-    self.body_lin_vel_w = self._body_lin_vel_w[:, self._body_indexes]
-    self.body_ang_vel_w = self._body_ang_vel_w[:, self._body_indexes]
-    self.time_step_total = self.joint_pos.shape[0]
 
 
 class MotionCommand(CommandTerm):
@@ -233,8 +51,8 @@ class MotionCommand(CommandTerm):
       device=self.device,
     )
 
-    self.motion = MotionLoader(
-      self.cfg.motion_file,
+    self.motion = ReferenceMotionDataset(
+      [self.cfg.motion_file],
       self.body_indexes,
       motion_type=self.cfg.motion_type,
       device=self.device,

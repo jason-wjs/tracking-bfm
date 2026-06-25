@@ -123,3 +123,21 @@ def test_reference_motion_dataset_replaces_multi_command_private_gather(
   torch.testing.assert_close(gathered[0, 1], dataset.body_pos_w[1])
   torch.testing.assert_close(gathered[1, 0], dataset.body_pos_w[3])
   torch.testing.assert_close(gathered[1, 1], dataset.body_pos_w[3])
+
+
+def test_reference_motion_dataset_supports_single_command_time_indexing(
+  tmp_path: Path,
+) -> None:
+  motion_file = tmp_path / "single.npz"
+  _write_motion(motion_file, frames=3, offset=5.0)
+  dataset = ReferenceMotionDataset(
+    [motion_file],
+    body_indexes=torch.tensor([0, 2], dtype=torch.long),
+    motion_type="mujoco",
+    device="cpu",
+  )
+  time_steps = torch.tensor([0, 2], dtype=torch.long)
+
+  assert dataset.time_step_total == 3
+  assert dataset.joint_pos[time_steps].shape == (2, 29)
+  assert dataset.body_pos_w[time_steps].shape == (2, 2, 3)
