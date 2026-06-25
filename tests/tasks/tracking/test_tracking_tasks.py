@@ -239,6 +239,35 @@ def test_tracking_reuses_upstream_mdp_terms_and_keeps_bfm_reward_additions() -> 
     assert not hasattr(upstream_rewards, name)
 
 
+def test_tracking_env_cfg_composes_upstream_base_cfg(monkeypatch) -> None:
+  from mjlab.tasks.tracking import tracking_env_cfg as upstream_tracking_env_cfg
+
+  from tracking_bfm.tasks.tracking import tracking_env_cfg
+
+  calls = []
+  real_make_tracking_env_cfg = upstream_tracking_env_cfg.make_tracking_env_cfg
+
+  def fake_make_tracking_env_cfg():
+    calls.append("called")
+    return real_make_tracking_env_cfg()
+
+  monkeypatch.setattr(
+    upstream_tracking_env_cfg,
+    "make_tracking_env_cfg",
+    fake_make_tracking_env_cfg,
+  )
+
+  cfg = tracking_env_cfg.make_tracking_env_cfg()
+
+  assert calls == ["called"]
+  assert {"body_pos", "body_ori"}.issubset(cfg.observations["actor"].terms)
+  assert "biased" not in cfg.observations["actor"].terms["joint_pos"].params
+  assert cfg.rewards["motion_global_root_pos"].weight == 1.0
+  assert "waist_action_rate_l2" in cfg.rewards
+  assert cfg.events["foot_friction"].params["ranges"] == (0.3, 2.0)
+  assert cfg.terminations["anchor_pos"].params["threshold"] == 0.5
+
+
 def test_tracking_mdp_namespace_keeps_local_motion_command_exports() -> None:
   from tracking_bfm.tasks.tracking import mdp
   from tracking_bfm.tasks.tracking.mdp.commands import MotionCommand

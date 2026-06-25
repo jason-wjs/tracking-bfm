@@ -1,29 +1,17 @@
-"""Motion mimic task configuration.
+"""BFM motion mimic task configuration.
 
-This module defines the base configuration for motion mimic tasks.
-Robot-specific configurations are located in the config/ directory.
-
-This is a re-implementation of BeyondMimic (https://beyondmimic.github.io/).
-
-Based on https://github.com/HybridRobotics/whole_body_tracking
-Commit: f8e20c880d9c8ec7172a13d3a88a65e3a5a88448
+This module composes the upstream MJLab tracking task configuration and applies
+the BFM-specific deltas needed by local tracking variants.
 """
 
 from mjlab.envs import ManagerBasedRlEnvCfg
-from mjlab.envs.mdp import dr
-from mjlab.envs.mdp.actions import JointPositionActionCfg
-from mjlab.managers.action_manager import ActionTermCfg
 from mjlab.managers.command_manager import CommandTermCfg
-from mjlab.managers.event_manager import EventTermCfg
 from mjlab.managers.observation_manager import ObservationGroupCfg, ObservationTermCfg
 from mjlab.managers.reward_manager import RewardTermCfg
 from mjlab.managers.scene_entity_config import SceneEntityCfg
 from mjlab.managers.termination_manager import TerminationTermCfg
-from mjlab.scene import SceneCfg
-from mjlab.sim import MujocoCfg, SimulationCfg
-from mjlab.terrains import TerrainEntityCfg
+from mjlab.tasks.tracking import tracking_env_cfg as upstream_tracking_env_cfg
 from mjlab.utils.noise import UniformNoiseCfg as Unoise
-from mjlab.viewer import ViewerConfig
 
 from tracking_bfm.tasks.tracking import mdp
 from tracking_bfm.tasks.tracking.mdp import MotionCommandCfg as DefaultMotionCommandCfg
@@ -38,15 +26,36 @@ VELOCITY_RANGE = {
 }
 
 
-def make_tracking_env_cfg(
-  motion_command_cfg_cls: type[CommandTermCfg] = DefaultMotionCommandCfg,
-) -> ManagerBasedRlEnvCfg:
-  """Create base tracking task configuration."""
+def _make_motion_command_cfg(
+  motion_command_cfg_cls: type[CommandTermCfg],
+) -> CommandTermCfg:
+  motion_kwargs = dict(
+    entity_name="robot",
+    resampling_time_range=(1.0e9, 1.0e9),
+    debug_vis=True,
+    pose_range={
+      "x": (-0.05, 0.05),
+      "y": (-0.05, 0.05),
+      "z": (-0.01, 0.01),
+      "roll": (-0.1, 0.1),
+      "pitch": (-0.1, 0.1),
+      "yaw": (-0.2, 0.2),
+    },
+    velocity_range=VELOCITY_RANGE,
+    joint_position_range=(-0.1, 0.1),
+    anchor_body_name="",
+    body_names=(),
+  )
+  dataclass_fields = getattr(motion_command_cfg_cls, "__dataclass_fields__", {})
+  if "motion_path" in dataclass_fields:
+    motion_kwargs["motion_path"] = ""
+  else:
+    motion_kwargs["motion_file"] = ""
 
-  ##
-  # Observations
-  ##
+  return motion_command_cfg_cls(**motion_kwargs)
 
+
+def _make_observations() -> dict[str, ObservationGroupCfg]:
   teacher_actor_terms = {
     "command": ObservationTermCfg(
       func=mdp.generated_commands, params={"command_name": "motion"}
@@ -116,7 +125,7 @@ def make_tracking_env_cfg(
     "actions": ObservationTermCfg(func=mdp.last_action),
   }
 
-  observations = {
+  return {
     "actor": ObservationGroupCfg(
       terms=teacher_actor_terms,
       concatenate_terms=True,
@@ -129,98 +138,9 @@ def make_tracking_env_cfg(
     ),
   }
 
-  ##
-  # Actions
-  ##
 
-  actions: dict[str, ActionTermCfg] = {
-    "joint_pos": JointPositionActionCfg(
-      entity_name="robot",
-      actuator_names=(".*",),
-      scale=0.5,
-      use_default_offset=True,
-    )
-  }
-
-  ##
-  # Commands
-  ##
-
-  motion_kwargs = dict(
-    entity_name="robot",
-    resampling_time_range=(1.0e9, 1.0e9),
-    debug_vis=True,
-    pose_range={
-      "x": (-0.05, 0.05),
-      "y": (-0.05, 0.05),
-      "z": (-0.01, 0.01),
-      "roll": (-0.1, 0.1),
-      "pitch": (-0.1, 0.1),
-      "yaw": (-0.2, 0.2),
-    },
-    velocity_range=VELOCITY_RANGE,
-    joint_position_range=(-0.1, 0.1),
-    anchor_body_name="",
-    body_names=(),
-  )
-  if "motion_path" in motion_command_cfg_cls.__dataclass_fields__:
-    motion_kwargs["motion_path"] = ""
-  else:
-    motion_kwargs["motion_file"] = ""
-
-  commands: dict[str, CommandTermCfg] = {
-    "motion": motion_command_cfg_cls(**motion_kwargs)
-  }
-
-  ##
-  # Events
-  ##
-
-  events: dict[str, EventTermCfg] = {
-    "push_robot": EventTermCfg(
-      func=mdp.push_by_setting_velocity,
-      mode="interval",
-      interval_range_s=(1.0, 3.0),
-      params={"velocity_range": VELOCITY_RANGE},
-    ),
-    "base_com": EventTermCfg(
-      mode="startup",
-      func=dr.body_com_offset,
-      params={
-        "asset_cfg": SceneEntityCfg("robot", body_names=()),  # Set in robot cfg.
-        "operation": "add",
-        "ranges": {
-          0: (-0.025, 0.025),
-          1: (-0.05, 0.05),
-          2: (-0.05, 0.05),
-        },
-      },
-    ),
-    "encoder_bias": EventTermCfg(
-      mode="startup",
-      func=dr.encoder_bias,
-      params={
-        "asset_cfg": SceneEntityCfg("robot"),
-        "bias_range": (-0.01, 0.01),
-      },
-    ),
-    "foot_friction": EventTermCfg(
-      mode="startup",
-      func=dr.geom_friction,
-      params={
-        "asset_cfg": SceneEntityCfg("robot", geom_names=()),  # Set per-robot.
-        "operation": "abs",
-        "ranges": (0.3, 2.0),
-        "shared_random": True,  # All foot geoms share the same friction.
-      },
-    ),
-  }
-
-  ##
-  # Rewards
-  ##
-
-  rewards: dict[str, RewardTermCfg] = {
+def _make_rewards() -> dict[str, RewardTermCfg]:
+  return {
     "motion_global_root_pos": RewardTermCfg(
       func=mdp.motion_global_anchor_position_error_exp,
       weight=1.0,
@@ -279,11 +199,9 @@ def make_tracking_env_cfg(
     ),
   }
 
-  ##
-  # Terminations
-  ##
 
-  terminations: dict[str, TerminationTermCfg] = {
+def _make_terminations() -> dict[str, TerminationTermCfg]:
+  return {
     "time_out": TerminationTermCfg(func=mdp.time_out, time_out=True),
     "anchor_pos": TerminationTermCfg(
       func=mdp.bad_anchor_pos_z_only,
@@ -302,41 +220,28 @@ def make_tracking_env_cfg(
       params={
         "command_name": "motion",
         "threshold": 0.5,
-        "body_names": (),  # Set per-robot.
+        "body_names": (),
       },
     ),
   }
 
-  ##
-  # Assemble and return
-  ##
 
-  return ManagerBasedRlEnvCfg(
-    scene=SceneCfg(terrain=TerrainEntityCfg(terrain_type="plane"), num_envs=1),
-    observations=observations,
-    actions=actions,
-    commands=commands,
-    events=events,
-    rewards=rewards,
-    terminations=terminations,
-    viewer=ViewerConfig(
-      origin_type=ViewerConfig.OriginType.ASSET_BODY,
-      entity_name="robot",
-      body_name="",  # Set per-robot.
-      distance=2.8,
-      fovy=55.0,
-      elevation=-5.0,
-      azimuth=120.0,
-    ),
-    sim=SimulationCfg(
-      nconmax=35,
-      njmax=250,
-      mujoco=MujocoCfg(
-        timestep=0.005,
-        iterations=10,
-        ls_iterations=20,
-      ),
-    ),
-    decimation=4,
-    episode_length_s=10.0,
-  )
+def _apply_bfm_event_deltas(cfg: ManagerBasedRlEnvCfg) -> None:
+  cfg.events["push_robot"].func = mdp.push_by_setting_velocity
+  cfg.events["push_robot"].params = {"velocity_range": VELOCITY_RANGE}
+  cfg.events["foot_friction"].params["ranges"] = (0.3, 2.0)
+
+
+def make_tracking_env_cfg(
+  motion_command_cfg_cls: type[CommandTermCfg] = DefaultMotionCommandCfg,
+) -> ManagerBasedRlEnvCfg:
+  """Create BFM tracking task configuration."""
+  cfg = upstream_tracking_env_cfg.make_tracking_env_cfg()
+
+  cfg.observations = _make_observations()
+  cfg.commands["motion"] = _make_motion_command_cfg(motion_command_cfg_cls)
+  _apply_bfm_event_deltas(cfg)
+  cfg.rewards = _make_rewards()
+  cfg.terminations = _make_terminations()
+
+  return cfg

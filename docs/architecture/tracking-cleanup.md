@@ -73,7 +73,7 @@ further cleanup, such as Motion source resolution.
 | `tracking/config/g1/rl_cfg.py` | bfm-owned | Owns BFM runner cfgs for registered tracking variants. | Keep registered configs aligned with task parity decisions. |
 | `tracking/env_cfgs.py` | removed-facade | Former public convenience exports duplicated ownership between `tracking/config/g1/` and `tracking/wbteleop/`. | Removed; import env cfg builders from their canonical implementation Modules. |
 | `tracking/rl_cfg.py` | removed-facade | Former public convenience exports duplicated ownership between `tracking/config/g1/` and `tracking/wbteleop/`. | Removed; import RL cfg builders from their canonical implementation Modules. |
-| `tracking/tracking_env_cfg.py` | bfm-owned, needs-seam | Forked from generic tracking but now includes BFM actor terms, body refs, command-class injection, and reward/termination deltas. | Keep for now; later isolate BFM deltas from reusable upstream pieces. |
+| `tracking/tracking_env_cfg.py` | bfm-owned | Composes upstream generic tracking env cfg and applies BFM actor terms, body refs, command-class injection, event, reward, and termination deltas locally. | Keep as the BFM delta layer; avoid reintroducing copied upstream sim/action/scene defaults. |
 | `tracking/mdp/__init__.py` | bfm-owned | Re-exports local tracking MDP terms and commands. | Keep while local MDP deltas exist. |
 | `tracking/mdp/commands.py` | bfm-owned | Single-motion command differs from upstream and supports BFM metrics/behavior. | Keep; later compare for possible lower-level Motion dataset seam. |
 | `tracking/mdp/multi_motion_command.py` | bfm-owned, needs-seam | Canonical BFM multi-motion command implementation. | Keep; do not split until Motion source seam is stable. |
