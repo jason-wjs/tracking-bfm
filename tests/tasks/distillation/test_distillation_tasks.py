@@ -8,6 +8,9 @@ import pytest
 pytest.importorskip("mjlab")
 
 from mjlab.managers.observation_manager import ObservationGroupCfg, ObservationTermCfg
+from mjlab.tasks.registry import list_tasks, load_env_cfg
+
+import tracking_bfm  # noqa: F401
 
 
 def _noop_obs(_env):
@@ -119,14 +122,37 @@ def test_distillation_registration_uses_primary_ids_and_legacy_aliases(monkeypat
     "tracking_bfm.tasks.distillation.config.g1.unitree_g1_flat_distillation_env_cfg",
     lambda play=False: f"dist-env-play-{play}",
   )
+  monkeypatch.setattr(
+    "tracking_bfm.tasks.distillation.config.g1."
+    "unitree_g1_flat_distillation_wbteleop_obs_env_cfg",
+    lambda play=False: f"dist-wbteleop-env-play-{play}",
+  )
 
   register_tasks()
 
   assert [call["primary_id"] for call in calls] == [
     "Mjlab-DistillationBFM-Flat-Unitree-G1",
     "Mjlab-LatentDistillationBFM-Flat-Unitree-G1",
+    "Mjlab-DistillationBFM-Flat-Unitree-G1-WBTeleopObs",
   ]
   assert calls[0]["aliases"] == ("Mjlab-Distillation-Flat-Unitree-G1",)
   assert calls[1]["aliases"] == ("Mjlab-LatentDistillation-Flat-Unitree-G1",)
+  assert calls[2]["aliases"] == ("Mjlab-DistillationWbteleopObs-Flat-Unitree-G1",)
   assert calls[0]["runner_cls"].__name__ == "DistillationRunner"
   assert calls[1]["runner_cls"].__name__ == "DistillationRunner"
+  assert calls[2]["runner_cls"].__name__ == "DistillationRunner"
+
+
+def test_distillation_wbteleop_obs_task_is_registered_with_legacy_alias() -> None:
+  task_ids = set(list_tasks())
+
+  assert "Mjlab-DistillationBFM-Flat-Unitree-G1-WBTeleopObs" in task_ids
+  assert "Mjlab-DistillationWbteleopObs-Flat-Unitree-G1" in task_ids
+
+  cfg = load_env_cfg("Mjlab-DistillationBFM-Flat-Unitree-G1-WBTeleopObs")
+
+  assert {
+    "ref_limb_ee_pose_b",
+    "motion_ref_ang_vel",
+    "robot_limb_ee_pose_b",
+  }.issubset(cfg.observations["student_actor"].terms)

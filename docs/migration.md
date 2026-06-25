@@ -19,9 +19,11 @@ out of the original `mjlab` fork and into a standalone package.
 | Test-optimal tracking | `Mjlab-TrackingBFM-Flat-Unitree-G1-TestOptimal` | `Mjlab-Trackingbfm-Flat-Unitree-G1-TestOptimal` | `tracking_bfm.tasks.tracking.config.g1` | `tracking_bfm.tasks.tracking.rl.MotionTrackingOnPolicyRunner` | Registered | Optimality probe with full critic observations and global body pose rewards. |
 | Test-optimal no-reg/no-DR tracking | `Mjlab-TrackingBFM-Flat-Unitree-G1-TestOptimal-NoRegNoDR` | `Mjlab-Trackingbfm-Flat-Unitree-G1-TestOptimal-NoRegNoDR` | `tracking_bfm.tasks.tracking.config.g1` | `tracking_bfm.tasks.tracking.rl.MotionTrackingOnPolicyRunner` | Registered | Pure optimality probe with regularization rewards and domain randomization disabled. |
 | Distillation | `Mjlab-DistillationBFM-Flat-Unitree-G1` | `Mjlab-Distillation-Flat-Unitree-G1` | `tracking_bfm.tasks.distillation.config.g1` | `tracking_bfm.tasks.distillation.rl.DistillationRunner` | Registered | Standard BFM distillation task. |
+| Distillation WBTeleop observations | `Mjlab-DistillationBFM-Flat-Unitree-G1-WBTeleopObs` | `Mjlab-DistillationWbteleopObs-Flat-Unitree-G1` | `tracking_bfm.tasks.distillation.config.g1` | `tracking_bfm.tasks.distillation.rl.DistillationRunner` | Registered | Standard distillation runner with WBTeleop-style student observations. |
 | Latent distillation | `Mjlab-LatentDistillationBFM-Flat-Unitree-G1` | `Mjlab-LatentDistillation-Flat-Unitree-G1` | `tracking_bfm.tasks.distillation.config.g1` | `tracking_bfm.tasks.distillation.rl.DistillationRunner` | Registered | Latent distillation runner config. |
 | Latent tracking | `Mjlab-LatentTrackingBFM-Flat-Unitree-G1-1Stage` | `Mjlab-LatentTrackingbfm-Flat-Unitree-G1-1Stage` | `tracking_bfm.tasks.latent_tracking.config.g1` | `tracking_bfm.tasks.latent_tracking.rl.LatentTrackingOnPolicyRunner` | Registered | Latent tracking 1-stage task. |
 | Latent velocity | `Mjlab-LatentVelocityBFM-Flat-Unitree-G1` | `Mjlab-LatentRL-Flat-Unitree-G1` | `tracking_bfm.tasks.latent_velocity.config.g1` | `tracking_bfm.tasks.latent_velocity.rl.LatentVelocityOnPolicyRunner` | Registered | `LatentRL` remains a legacy alias. |
+| Rough latent velocity | `Mjlab-LatentVelocityBFM-Rough-Unitree-G1` | `Mjlab-LatentRL-Rough-Unitree-G1` | `tracking_bfm.tasks.latent_velocity.config.g1` | `tracking_bfm.tasks.latent_velocity.rl.LatentVelocityOnPolicyRunner` | Registered | Rough-terrain latent velocity task; `LatentRL-Rough` remains a legacy alias. |
 
 ## Feature Parity Decisions
 
@@ -40,8 +42,8 @@ table and the corresponding tests.
 | ActionTrunk | `Mjlab-Trackingbfm-Flat-Unitree-G1-ActionTrunk` | The original fork added action trunk fields to MJLab core action management. Official `mjlab==1.4.0` does not expose this Interface, and current tracking-bfm work no longer needs it. | Removed | Delete | Do not register the primary ID or legacy alias. Existing checkpoints that require this task must stay on the old fork. | User decision on 2026-06-25 plus code search. | Removal avoids carrying fork-only MJLab core assumptions in the standalone package. |
 | TestOptimal | `Mjlab-Trackingbfm-Flat-Unitree-G1-TestOptimal` | Test-optimal env cfg uses full critic observations for actor and global body pose rewards. | Registered | Keep | Register primary `Mjlab-TrackingBFM-Flat-Unitree-G1-TestOptimal` plus legacy alias. | `tests/tasks/tracking/test_tracking_tasks.py` | Optimality probe retained for compatibility and diagnostics. |
 | NoRegNoDR | `Mjlab-Trackingbfm-Flat-Unitree-G1-TestOptimal-NoRegNoDR` | Test-optimal env cfg supports disabling regularization and domain randomization. | Registered | Keep | Register primary `Mjlab-TrackingBFM-Flat-Unitree-G1-TestOptimal-NoRegNoDR` plus legacy alias. | `tests/tasks/tracking/test_tracking_tasks.py` | Pure optimality probe retained for compatibility and diagnostics. |
-| DistillationWbteleopObs | `Mjlab-DistillationWbteleopObs-Flat-Unitree-G1` | `unitree_g1_flat_distillation_wbteleop_obs_env_cfg` exists. | Code exists, not registered | Needs decision | If still needed, register primary `Mjlab-DistillationBFM-Flat-Unitree-G1-WBTeleopObs` plus legacy alias; otherwise mark removed and delete dead config. | Code search plus old fork parity check. | Confirm naming before registering. |
-| Rough latent velocity | `Mjlab-LatentRL-Rough-Unitree-G1` | Rough latent velocity cfg exists. | Code exists, not registered | Needs decision | If still needed, register primary `Mjlab-LatentVelocityBFM-Rough-Unitree-G1` plus legacy alias; otherwise mark removed. | Code search plus old fork parity check. | Confirm rough-terrain scope for standalone package. |
+| DistillationWbteleopObs | `Mjlab-DistillationWbteleopObs-Flat-Unitree-G1` | `unitree_g1_flat_distillation_wbteleop_obs_env_cfg` builds WBTeleop-style student observations. | Registered | Keep | Register primary `Mjlab-DistillationBFM-Flat-Unitree-G1-WBTeleopObs` plus legacy alias. | `tests/tasks/distillation/test_distillation_tasks.py` | Retained for compatibility and WBTeleop-observation student distillation. |
+| Rough latent velocity | `Mjlab-LatentRL-Rough-Unitree-G1` | Rough latent velocity cfg adapts the upstream rough G1 velocity task for latent decoder control. | Registered | Keep | Register primary `Mjlab-LatentVelocityBFM-Rough-Unitree-G1` plus legacy alias. | `tests/tasks/latent/test_latent_tasks.py` | Retained for rough-terrain latent velocity experiments. |
 | Non-BFM tracking | `Mjlab-Tracking-Flat-Unitree-G1`, `Mjlab-Tracking-Flat-Unitree-G1-No-State-Estimation` | Generic tracking builders exist but are not registered in this package. | Not registered | Likely upstream scope | Do not register unless explicitly needed for BFM compatibility. | Old fork parity check. | Treat as `mjlab` scope until confirmed otherwise. |
 
 ## Workflow Migration
@@ -57,11 +59,9 @@ table and the corresponding tests.
 
 ## Follow-up Work
 
-1. Decide whether `DistillationWbteleopObs` and rough latent velocity should be
-   registered, documented as removed, or deleted.
-2. Confirm whether old W&B runs, checkpoints, or scripts still reference each
-   unregistered legacy ID.
-3. Extend `tracking_bfm.motion_source` only after the current seam is stable,
+1. Confirm whether old W&B runs, checkpoints, or scripts still reference any
+   remaining unregistered legacy IDs.
+2. Extend `tracking_bfm.motion_source` only after the current seam is stable,
    starting with runtime loader work described in
    `docs/architecture/motion-source.md`.
-4. Keep README primary task IDs aligned with the registered task table above.
+3. Keep README primary task IDs aligned with the registered task table above.

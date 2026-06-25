@@ -8,6 +8,10 @@ import pytest
 pytest.importorskip("mjlab")
 torch = pytest.importorskip("torch")
 
+from mjlab.tasks.registry import list_tasks, load_env_cfg  # noqa: E402
+
+import tracking_bfm  # noqa: E402, F401
+
 
 def _reward(weight: float = 0.0, params: dict | None = None):
   return SimpleNamespace(weight=weight, params={} if params is None else dict(params))
@@ -178,6 +182,10 @@ def test_latent_registration_uses_primary_ids_and_legacy_aliases(monkeypatch):
     "tracking_bfm.tasks.latent_velocity.config.g1.unitree_g1_flat_latent_rl_env_cfg",
     lambda play=False: f"latent-velocity-env-play-{play}",
   )
+  monkeypatch.setattr(
+    "tracking_bfm.tasks.latent_velocity.config.g1.unitree_g1_rough_latent_rl_env_cfg",
+    lambda play=False: f"rough-latent-velocity-env-play-{play}",
+  )
 
   register_latent_tracking_tasks()
   register_latent_velocity_tasks()
@@ -185,8 +193,24 @@ def test_latent_registration_uses_primary_ids_and_legacy_aliases(monkeypatch):
   assert [call["primary_id"] for call in calls] == [
     "Mjlab-LatentTrackingBFM-Flat-Unitree-G1-1Stage",
     "Mjlab-LatentVelocityBFM-Flat-Unitree-G1",
+    "Mjlab-LatentVelocityBFM-Rough-Unitree-G1",
   ]
   assert calls[0]["aliases"] == ("Mjlab-LatentTrackingbfm-Flat-Unitree-G1-1Stage",)
   assert calls[1]["aliases"] == ("Mjlab-LatentRL-Flat-Unitree-G1",)
+  assert calls[2]["aliases"] == ("Mjlab-LatentRL-Rough-Unitree-G1",)
   assert calls[0]["runner_cls"].__name__ == "LatentTrackingOnPolicyRunner"
   assert calls[1]["runner_cls"].__name__ == "LatentVelocityOnPolicyRunner"
+  assert calls[2]["runner_cls"].__name__ == "LatentVelocityOnPolicyRunner"
+
+
+def test_rough_latent_velocity_task_is_registered_with_legacy_alias() -> None:
+  task_ids = set(list_tasks())
+
+  assert "Mjlab-LatentVelocityBFM-Rough-Unitree-G1" in task_ids
+  assert "Mjlab-LatentRL-Rough-Unitree-G1" in task_ids
+
+  cfg = load_env_cfg("Mjlab-LatentVelocityBFM-Rough-Unitree-G1")
+
+  assert cfg.scene.terrain is not None
+  assert "pose" not in cfg.rewards
+  assert cfg.rewards["track_linear_velocity"].weight == 3.0

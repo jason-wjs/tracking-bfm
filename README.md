@@ -22,9 +22,11 @@ Use these IDs for new training, play, export, and evaluation runs:
 - `Mjlab-TrackingBFM-Flat-Unitree-G1-TestOptimal`
 - `Mjlab-TrackingBFM-Flat-Unitree-G1-TestOptimal-NoRegNoDR`
 - `Mjlab-DistillationBFM-Flat-Unitree-G1`
+- `Mjlab-DistillationBFM-Flat-Unitree-G1-WBTeleopObs`
 - `Mjlab-LatentDistillationBFM-Flat-Unitree-G1`
 - `Mjlab-LatentTrackingBFM-Flat-Unitree-G1-1Stage`
 - `Mjlab-LatentVelocityBFM-Flat-Unitree-G1`
+- `Mjlab-LatentVelocityBFM-Rough-Unitree-G1`
 
 ## Legacy Aliases
 
@@ -37,9 +39,11 @@ checkpoints, and scripts. Prefer the primary IDs above in new references.
 - `Mjlab-Trackingbfm-Flat-Unitree-G1-TestOptimal`
 - `Mjlab-Trackingbfm-Flat-Unitree-G1-TestOptimal-NoRegNoDR`
 - `Mjlab-Distillation-Flat-Unitree-G1`
+- `Mjlab-DistillationWbteleopObs-Flat-Unitree-G1`
 - `Mjlab-LatentDistillation-Flat-Unitree-G1`
 - `Mjlab-LatentTrackingbfm-Flat-Unitree-G1-1Stage`
 - `Mjlab-LatentRL-Flat-Unitree-G1`
+- `Mjlab-LatentRL-Rough-Unitree-G1`
 
 ## Module Boundaries
 

@@ -18,9 +18,11 @@ PRIMARY_TASK_IDS = {
   "Mjlab-TrackingBFM-Flat-Unitree-G1-TestOptimal",
   "Mjlab-TrackingBFM-Flat-Unitree-G1-TestOptimal-NoRegNoDR",
   "Mjlab-DistillationBFM-Flat-Unitree-G1",
+  "Mjlab-DistillationBFM-Flat-Unitree-G1-WBTeleopObs",
   "Mjlab-LatentDistillationBFM-Flat-Unitree-G1",
   "Mjlab-LatentTrackingBFM-Flat-Unitree-G1-1Stage",
   "Mjlab-LatentVelocityBFM-Flat-Unitree-G1",
+  "Mjlab-LatentVelocityBFM-Rough-Unitree-G1",
 }
 
 LEGACY_TASK_ALIASES = {
@@ -30,9 +32,11 @@ LEGACY_TASK_ALIASES = {
   "Mjlab-Trackingbfm-Flat-Unitree-G1-TestOptimal",
   "Mjlab-Trackingbfm-Flat-Unitree-G1-TestOptimal-NoRegNoDR",
   "Mjlab-Distillation-Flat-Unitree-G1",
+  "Mjlab-DistillationWbteleopObs-Flat-Unitree-G1",
   "Mjlab-LatentDistillation-Flat-Unitree-G1",
   "Mjlab-LatentTrackingbfm-Flat-Unitree-G1-1Stage",
   "Mjlab-LatentRL-Flat-Unitree-G1",
+  "Mjlab-LatentRL-Rough-Unitree-G1",
 }
 
 
