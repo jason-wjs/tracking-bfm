@@ -97,3 +97,29 @@ def test_reference_motion_dataset_clamps_windowed_time_steps(tmp_path: Path) -> 
   torch.testing.assert_close(gathered[0, 0], dataset.joint_pos[0])
   torch.testing.assert_close(gathered[0, 1], dataset.joint_pos[1])
   torch.testing.assert_close(gathered[0, 2], dataset.joint_pos[2])
+
+
+def test_reference_motion_dataset_replaces_multi_command_private_gather(
+  tmp_path: Path,
+) -> None:
+  first = tmp_path / "first.npz"
+  second = tmp_path / "second.npz"
+  _write_motion(first, frames=2, offset=0.0)
+  _write_motion(second, frames=2, offset=100.0)
+  dataset = ReferenceMotionDataset(
+    [first, second],
+    body_indexes=torch.tensor([0, 1], dtype=torch.long),
+    motion_type="mujoco",
+    device="cpu",
+  )
+
+  motion_ids = torch.tensor([0, 1], dtype=torch.long)
+  time_steps = torch.tensor([[0, 1], [1, 99]], dtype=torch.long)
+
+  gathered = dataset.gather("body_pos_w", motion_ids, time_steps)
+
+  assert gathered.shape == (2, 2, 2, 3)
+  torch.testing.assert_close(gathered[0, 0], dataset.body_pos_w[0])
+  torch.testing.assert_close(gathered[0, 1], dataset.body_pos_w[1])
+  torch.testing.assert_close(gathered[1, 0], dataset.body_pos_w[3])
+  torch.testing.assert_close(gathered[1, 1], dataset.body_pos_w[3])
