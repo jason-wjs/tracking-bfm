@@ -103,8 +103,8 @@ def test_primary_tracking_runtime_smoke_with_real_motion(
     )
     assert gathered.shape[0] == env.num_envs
 
-    actions = torch.zeros(env.num_envs, env.num_actions)
-    next_obs, _, _, _ = env.step(actions)
+    actions = torch.zeros(env.num_envs, env.action_manager.total_action_dim)
+    next_obs = env.step(actions)[0]
     assert next_obs.shape[0] == env.num_envs
   finally:
     env.close()
