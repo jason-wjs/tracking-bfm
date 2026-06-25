@@ -395,10 +395,15 @@ class MultiMotionCommand(CommandTerm):
   ) -> torch.Tensor:
     return self.motion.frame_indices(motion_ids, time_steps)
 
-  def _gather_motion_field(
+  def gather_reference_field(
     self, field_name: str, motion_ids: torch.Tensor, time_steps: torch.Tensor
   ) -> torch.Tensor:
     return self.motion.gather(field_name, motion_ids, time_steps)
+
+  def _gather_motion_field(
+    self, field_name: str, motion_ids: torch.Tensor, time_steps: torch.Tensor
+  ) -> torch.Tensor:
+    return self.gather_reference_field(field_name, motion_ids, time_steps)
 
   def _get_reference_time_steps(self) -> torch.Tensor:
     offsets = []

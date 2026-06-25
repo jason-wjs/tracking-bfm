@@ -78,7 +78,8 @@ def _gather_student_body_field(
     values = getattr(command, field_name)
     return values.unsqueeze(1)
 
-  if not hasattr(command, "_gather_motion_field") or not hasattr(command, "motion_idx"):
+  gather_reference_field = getattr(command, "gather_reference_field", None)
+  if not callable(gather_reference_field) or not hasattr(command, "motion_idx"):
     raise NotImplementedError(
       "Student multi-step command observations require a motion command that "
       "supports reference field gathering."
@@ -95,9 +96,7 @@ def _gather_student_body_field(
     device=command.time_steps.device,
   )
   reference_time_steps = command.time_steps.unsqueeze(1) + offsets.unsqueeze(0)
-  values = command._gather_motion_field(
-    field_name, command.motion_idx, reference_time_steps
-  )
+  values = gather_reference_field(field_name, command.motion_idx, reference_time_steps)
   if field_name == "body_pos_w":
     values = values + command._env.scene.env_origins[:, None, None, :]
   return values

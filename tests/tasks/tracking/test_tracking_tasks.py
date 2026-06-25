@@ -334,3 +334,47 @@ def test_tracking_bfm_wbteleop_uses_standalone_runner_and_algorithm() -> None:
     == "tracking_bfm.tasks.tracking.wbteleop.algorithm:WbTeleopPPO"
   )
   assert rl_cfg.algorithm.teacher_task_id == PRIMARY_TRACKING_ID
+
+
+def test_wbteleop_reference_observations_use_public_reference_gather() -> None:
+  from types import SimpleNamespace
+
+  import torch
+
+  from tracking_bfm.tasks.tracking.wbteleop import observations
+
+  class FakeCommand:
+    cfg = SimpleNamespace(
+      body_names=(
+        "pelvis",
+        "left_wrist_yaw_link",
+        "right_wrist_yaw_link",
+        "left_ankle_roll_link",
+        "right_ankle_roll_link",
+      )
+    )
+    time_steps = torch.tensor([5], dtype=torch.long)
+    motion_idx = torch.tensor([0], dtype=torch.long)
+    _env = SimpleNamespace(scene=SimpleNamespace(env_origins=torch.zeros(1, 3)))
+
+    def gather_reference_field(self, field_name, motion_ids, time_steps):
+      assert field_name in {"body_pos_w", "body_quat_w"}
+      if field_name == "body_pos_w":
+        return torch.zeros(1, 3, 5, 3)
+      quat = torch.zeros(1, 3, 5, 4)
+      quat[..., 0] = 1.0
+      return quat
+
+  env = SimpleNamespace(
+    num_envs=1,
+    command_manager=SimpleNamespace(get_term=lambda _: FakeCommand()),
+  )
+
+  obs = observations.ref_limb_ee_pose_b(
+    env,
+    "motion",
+    history_steps=1,
+    future_steps=2,
+  )
+
+  assert obs.shape == (1, 108)

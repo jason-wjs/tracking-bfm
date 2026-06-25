@@ -156,3 +156,40 @@ def test_distillation_wbteleop_obs_task_is_registered_with_legacy_alias() -> Non
     "motion_ref_ang_vel",
     "robot_limb_ee_pose_b",
   }.issubset(cfg.observations["student_actor"].terms)
+
+
+def test_student_multistep_observations_use_public_reference_gather() -> None:
+  import torch
+
+  from tracking_bfm.tasks.distillation.mdp import commands
+
+  class FakeCommand:
+    cfg = SimpleNamespace(
+      body_names=("pelvis", "left_wrist_yaw_link", "right_wrist_yaw_link")
+    )
+    time_steps = torch.tensor([5], dtype=torch.long)
+    motion_idx = torch.tensor([0], dtype=torch.long)
+    _env = SimpleNamespace(scene=SimpleNamespace(env_origins=torch.zeros(1, 3)))
+
+    def gather_reference_field(self, field_name, motion_ids, time_steps):
+      assert field_name in {"body_pos_w", "body_quat_w"}
+      if field_name == "body_pos_w":
+        return torch.zeros(1, 3, 3, 3)
+      quat = torch.zeros(1, 3, 3, 4)
+      quat[..., 0] = 1.0
+      return quat
+
+  env = SimpleNamespace(
+    num_envs=1,
+    command_manager=SimpleNamespace(get_term=lambda _: FakeCommand()),
+  )
+
+  obs = commands.student_ee_pose_b(
+    env,
+    "motion",
+    ee_body_names=("left_wrist_yaw_link", "right_wrist_yaw_link"),
+    history_steps=1,
+    future_steps=2,
+  )
+
+  assert obs.shape == (1, 54)

@@ -38,7 +38,8 @@ def _reference_time_window(
 ) -> tuple[torch.Tensor, torch.Tensor]:
   if int(history_steps) == 0 and int(future_steps) == 1:
     return command.body_pos_w.unsqueeze(1), command.body_quat_w.unsqueeze(1)
-  if not hasattr(command, "_gather_motion_field") or not hasattr(command, "time_steps"):
+  gather_reference_field = getattr(command, "gather_reference_field", None)
+  if not callable(gather_reference_field) or not hasattr(command, "time_steps"):
     raise NotImplementedError(
       "Reference limb ee pose observations with history/future require a motion "
       "command that supports reference field gathering."
@@ -53,10 +54,10 @@ def _reference_time_window(
     offsets, device=command.time_steps.device, dtype=torch.long
   )
   reference_time_steps = command.time_steps.unsqueeze(1) + offsets_tensor.unsqueeze(0)
-  body_pos_w = command._gather_motion_field(
+  body_pos_w = gather_reference_field(
     "body_pos_w", command.motion_idx, reference_time_steps
   )
-  body_quat_w = command._gather_motion_field(
+  body_quat_w = gather_reference_field(
     "body_quat_w", command.motion_idx, reference_time_steps
   )
   if hasattr(command, "_env"):
