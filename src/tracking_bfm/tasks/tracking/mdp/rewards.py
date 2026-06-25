@@ -267,14 +267,7 @@ def joint_action_rate_l2(
     term_action_ids = torch.nonzero(torch.isin(target_ids, joint_ids), as_tuple=False)
     term_action_ids = term_action_ids.flatten()
 
-  if getattr(action_manager, "action_trunk_len", 1) == 1:
-    action_rate = action_manager.action - action_manager.prev_action
-  else:
-    action_rate = (
-      action_manager.action_sequence[:, 0, :]
-      - action_manager.prev_action_sequence[:, 0, :]
-    )
-
+  action_rate = action_manager.action - action_manager.prev_action
   action_ids = term_action_ids + term_start
   return torch.sum(torch.square(action_rate[:, action_ids]), dim=1)
 

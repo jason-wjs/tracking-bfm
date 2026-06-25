@@ -63,8 +63,8 @@ further cleanup, such as Motion source resolution.
 | `tracking/__init__.py` | bfm-owned | Imports BFM tracking registrations and WBTeleop tracking variant. | Keep; do not register generic upstream tracking here. |
 | `tracking/config/__init__.py` | bfm-owned | Package registration entry for BFM G1 configs. | Keep. |
 | `tracking/config/g1/__init__.py` | bfm-owned | Registers BFM primary task IDs and legacy aliases. | Keep; update only through migration decisions. |
-| `tracking/config/g1/env_cfgs.py` | bfm-owned, legacy-candidate | Owns G1 BFM env cfgs plus unregistered old variants such as ActionTrunk and TestOptimal. | Keep BFM primary cfgs; decide old variants through `docs/migration.md`. |
-| `tracking/config/g1/rl_cfg.py` | bfm-owned, legacy-candidate | Owns BFM runner cfgs plus action-trunk/test variants. | Keep registered configs; decide unregistered configs with task parity. |
+| `tracking/config/g1/env_cfgs.py` | bfm-owned, legacy-candidate | Owns G1 BFM env cfgs plus unregistered old variants such as TestOptimal. | Keep BFM primary cfgs; decide old variants through `docs/migration.md`. |
+| `tracking/config/g1/rl_cfg.py` | bfm-owned | Owns BFM runner cfgs for registered tracking variants. | Keep registered configs aligned with task parity decisions. |
 | `tracking/env_cfgs.py` | bfm-owned | Public convenience exports for BFM tracking env cfg builders. | Keep; align with registered surface. |
 | `tracking/rl_cfg.py` | bfm-owned | Public convenience exports for BFM tracking and WBTeleop runner configs. | Keep; align with registered surface. |
 | `tracking/tracking_env_cfg.py` | bfm-owned, needs-seam | Forked from generic tracking but now includes BFM actor terms, body refs, command-class injection, and reward/termination deltas. | Keep for now; later isolate BFM deltas from reusable upstream pieces. |

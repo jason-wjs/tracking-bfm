@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+import tracking_bfm.export as export
 from tracking_bfm.export.checkpoint import (
   detect_checkpoint_family,
   ensure_output_path_available,
@@ -26,6 +27,11 @@ from tracking_bfm.scripts.export_latent_onnx import (
   parse_args as parse_latent_export_args,
 )
 from tracking_bfm.scripts.export_onnx import parse_args as parse_policy_export_args
+
+
+def test_export_package_public_names_are_resolvable() -> None:
+  for name in export.__all__:
+    assert hasattr(export, name)
 
 
 def test_detect_checkpoint_family_tracking() -> None:

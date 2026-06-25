@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from tracking_bfm.export.checkpoint import (
   CheckpointFamily,
   CheckpointFamilyOption,
@@ -13,6 +15,19 @@ from tracking_bfm.export.metadata import (
   build_latent_policy_metadata,
   build_policy_metadata,
 )
+
+if TYPE_CHECKING:
+  from tracking_bfm.export.onnx_latent_policy import (
+    LatentTrackingOnnxModel,
+    export_actor_decoder_model_to_onnx,
+    export_latent_tracking_checkpoint_to_onnx,
+    resolve_latent_policy_onnx_path,
+  )
+  from tracking_bfm.export.onnx_policy import (
+    export_actor_model_to_onnx,
+    export_checkpoint_to_onnx,
+    resolve_policy_onnx_path,
+  )
 
 __all__ = [
   "CheckpointFamily",

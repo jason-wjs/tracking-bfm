@@ -130,6 +130,7 @@ def test_wandb_run_artifact_dir_applies_by_command_shape(
     assert command.motion_file == str(tmp_path / expected_file)
     assert applied.motion_file == str(tmp_path / expected_file)
   if expected_path is not None:
+    assert isinstance(command, MultiMotionCommand)
     assert command.motion_path == str(tmp_path / expected_path)
     assert command.motion_file == ""
     assert applied.motion_path == str(tmp_path / expected_path)

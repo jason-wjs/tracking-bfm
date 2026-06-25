@@ -83,10 +83,3 @@ def unitree_g1_trackingbfm_ppo_runner_cfg() -> RslRlOnPolicyRunnerCfg:
     num_steps_per_env=24,
     max_iterations=300_000,
   )
-
-
-def unitree_g1_trackingbfm_action_trunk_ppo_runner_cfg() -> RslRlOnPolicyRunnerCfg:
-  """Create RL runner configuration for the G1 BFM action-trunk task."""
-  cfg = unitree_g1_trackingbfm_ppo_runner_cfg()
-  cfg.experiment_name = "g1_tracking_action_trunk"
-  return cfg

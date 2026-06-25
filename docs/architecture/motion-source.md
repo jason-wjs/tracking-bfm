@@ -61,19 +61,20 @@ Start with low-risk call sites where behavior is already isolated:
 3. W&B run motion artifact application in `tracking_bfm.scripts.evaluate`.
 4. Training registry artifact application, while preserving the existing
    `registry_name` handoff to the runner.
+5. Play motion source application in `tracking_bfm.scripts.play`, including
+   explicit `motion_file`, explicit `motion_path`, W&B registry artifacts, and
+   W&B run motion artifacts.
 
 Implementation status: this batch is implemented by
 `tracking_bfm.motion_source`. Workflow adapters may keep temporary compatibility
 wrappers, but source mutual exclusion, W&B artifact resolution, command source
-shape handling, directory collection, and deterministic sharding should live in
-that Module.
+shape handling, play-time command application, directory collection, and
+deterministic sharding should live in that Module.
 
 ## Deferred Work
 
 Defer these until the external seam is stable:
 
-- `tracking_bfm.scripts.play`, because dummy/trained/checkpoint/W&B behavior is
-  interleaved and currently biased toward a default single `motion.npz`.
 - `multi_motion_command._resolve_motion_files`, because it is runtime command
   implementation and includes distributed sharding behavior.
 - `MotionLoader` and `MultiMotionLoader`, because tensor loading and body/joint

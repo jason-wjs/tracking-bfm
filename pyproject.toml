@@ -83,3 +83,16 @@ ignore = ["B011"]
 
 [tool.pytest.ini_options]
 addopts = "--strict-markers"
+
+[tool.pyright]
+include = [
+  "src/tracking_bfm/motion_source.py",
+  "src/tracking_bfm/tasks/registry.py",
+  "src/tracking_bfm/export/__init__.py",
+  "tests/test_motion_source.py",
+  "tests/test_entry_points.py",
+  "tests/test_project_structure.py",
+]
+pythonVersion = "3.10"
+typeCheckingMode = "basic"
+reportMissingTypeStubs = "none"

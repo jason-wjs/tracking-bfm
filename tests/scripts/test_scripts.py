@@ -23,6 +23,19 @@ ROOT_QUICK_SCRIPTS = {
 PRIMARY_TRACKING_ID = "Mjlab-TrackingBFM-Flat-Unitree-G1"
 
 
+class FakePlayMotionCommand:
+  def __init__(self) -> None:
+    self.motion_file = "old.npz"
+    self.motion_path = ""
+    self.motion_type = "isaaclab"
+    self.sampling_mode = "start"
+
+
+class FakePlayEnvCfg:
+  def __init__(self) -> None:
+    self.commands = {"motion": FakePlayMotionCommand()}
+
+
 def _definitions(path: Path) -> set[str]:
   tree = ast.parse(path.read_text(encoding="utf-8"))
   return {
@@ -173,6 +186,50 @@ def test_motion_source_recognizes_registered_multi_motion_command() -> None:
 
   assert is_motion_command_cfg(motion_cmd)
   assert motion_command_source_shape(motion_cmd) == "multi"
+
+
+def test_play_motion_path_takes_priority_over_wandb_run_path(capsys) -> None:
+  pytest.importorskip("mjlab")
+
+  from tracking_bfm.scripts.play import PlayConfig, _apply_tracking_motion_source
+
+  env_cfg = FakePlayEnvCfg()
+  motion_cmd = env_cfg.commands["motion"]
+  cfg = PlayConfig(motion_path="cli_motions", wandb_run_path="entity/project/run")
+
+  applied = _apply_tracking_motion_source(env_cfg, cfg, dummy_mode=False)
+
+  assert applied is not None
+  assert applied.motion_path == "cli_motions"
+  assert motion_cmd.motion_path == "cli_motions"
+  assert motion_cmd.motion_file == ""
+  assert "cli_motions" in capsys.readouterr().out
+
+
+def test_play_dummy_tracking_requires_motion_source() -> None:
+  pytest.importorskip("mjlab")
+
+  from tracking_bfm.scripts.play import PlayConfig, _apply_tracking_motion_source
+
+  env_cfg = FakePlayEnvCfg()
+
+  with pytest.raises(ValueError, match="Tracking tasks require a motion source"):
+    _apply_tracking_motion_source(env_cfg, PlayConfig(agent="zero"), dummy_mode=True)
+
+
+def test_play_demo_mode_sets_uniform_sampling() -> None:
+  pytest.importorskip("mjlab")
+
+  from tracking_bfm.scripts.play import PlayConfig, _apply_tracking_motion_source
+
+  env_cfg = FakePlayEnvCfg()
+  motion_cmd = env_cfg.commands["motion"]
+  cfg = PlayConfig(motion_path="demo_motions", motion_type="mujoco", _demo_mode=True)
+
+  _apply_tracking_motion_source(env_cfg, cfg, dummy_mode=False)
+
+  assert motion_cmd.motion_type == "mujoco"
+  assert motion_cmd.sampling_mode == "uniform"
 
 
 def test_inspect_checkpoint_prints_json(tmp_path: Path, capsys) -> None:

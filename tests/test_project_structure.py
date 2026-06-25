@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
-try:
+if sys.version_info >= (3, 11):
   import tomllib
-except ModuleNotFoundError:
+else:
   import tomli as tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -113,13 +114,14 @@ def test_architecture_context_and_migration_docs_exist() -> None:
     "Mjlab-TrackingBFM-Flat-Unitree-G1",
     "Mjlab-Trackingbfm-Flat-Unitree-G1",
     "ActionTrunk",
+    "Removed",
+    "Existing checkpoints that require this task must stay on the old fork",
     "DistillationWbteleopObs",
     "TestOptimal",
     "NoRegNoDR",
     "Rough",
     "Mjlab-Trackingbfm-Flat-Unitree-G1-ActionTrunk",
     "Mjlab-LatentRL-Rough-Unitree-G1",
-    "pending; do not register or delete",
   ):
     assert feature in migration
 
@@ -140,3 +142,25 @@ def test_architecture_context_and_migration_docs_exist() -> None:
     "wbteleop/",
   ):
     assert item in tracking_cleanup
+
+
+def test_task_registration_is_explicit_and_fail_fast() -> None:
+  task_init = (ROOT / "src" / "tracking_bfm" / "tasks" / "__init__.py").read_text()
+
+  assert "import_packages" not in task_init
+  for import_target in (
+    "tracking_bfm.tasks.tracking.config.g1",
+    "tracking_bfm.tasks.tracking.wbteleop",
+    "tracking_bfm.tasks.distillation.config.g1",
+    "tracking_bfm.tasks.latent_tracking.config.g1",
+    "tracking_bfm.tasks.latent_velocity.config.g1",
+  ):
+    assert import_target in task_init
+
+  for relative_path in (
+    "src/tracking_bfm/tasks/distillation/config/g1/__init__.py",
+    "src/tracking_bfm/tasks/latent_tracking/config/g1/__init__.py",
+  ):
+    registration_module = (ROOT / relative_path).read_text()
+    assert "_auto_register_tasks" not in registration_module
+    assert "except ModuleNotFoundError" not in registration_module

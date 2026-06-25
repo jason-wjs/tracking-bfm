@@ -29,13 +29,4 @@ def register_tasks() -> None:
   )
 
 
-def _auto_register_tasks() -> None:
-  try:
-    register_tasks()
-  except ModuleNotFoundError as exc:
-    if (exc.name or "").startswith("tracking_bfm.tasks.tracking"):
-      return
-    raise
-
-
-_auto_register_tasks()
+register_tasks()

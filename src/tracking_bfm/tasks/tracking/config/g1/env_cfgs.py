@@ -312,15 +312,6 @@ def unitree_g1_flat_tracking_bfm_env_cfg(
   return cfg
 
 
-def unitree_g1_flat_tracking_bfm_action_trunk_env_cfg(
-  play: bool = False,
-) -> ManagerBasedRlEnvCfg:
-  """Create the multi-motion Unitree G1 tracking task with 4-slice action trunk."""
-  cfg = unitree_g1_flat_tracking_bfm_env_cfg(play=play)
-  cfg.action_trunk_len = cfg.decimation
-  return cfg
-
-
 def unitree_g1_flat_tracking_bfm_1stage_env_cfg(
   play: bool = False,
 ) -> ManagerBasedRlEnvCfg:

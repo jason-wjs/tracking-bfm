@@ -7,7 +7,7 @@ from copy import deepcopy
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import mjlab
 import torch
@@ -21,11 +21,14 @@ from mjlab.utils.wrappers import VideoRecorder
 from mjlab.viewer import NativeMujocoViewer, ViserPlayViewer
 from mjlab.viewer.viser.viewer import CheckpointManager, format_time_ago
 
-from tracking_bfm.scripts.cli_helpers import maybe_print_top_level_help
-from tracking_bfm.tasks.tracking.mdp import MotionCommandCfg
-from tracking_bfm.tasks.tracking.mdp.multi_commands import (
-  MotionCommandCfg as MultiMotionCommandCfg,
+from tracking_bfm.motion_source import (
+  AppliedMotionSource,
+  MotionSourceSpec,
+  apply_motion_source_to_command,
+  is_motion_command_cfg,
+  resolve_motion_source,
 )
+from tracking_bfm.scripts.cli_helpers import maybe_print_top_level_help
 
 
 def _parse_wandb_dt(value: str | datetime) -> datetime:
@@ -46,6 +49,7 @@ class PlayConfig:
   """Optional checkpoint name within the W&B run to load (e.g. 'model_4000.pt')."""
   checkpoint_file: str | None = None
   motion_file: str | None = None
+  motion_path: str | None = None
   motion_type: Literal["isaaclab", "mujoco"] = "isaaclab"
   num_envs: int | None = None
   device: str | None = None
@@ -83,6 +87,70 @@ def _configure_distillation_play_visualization(env_cfg, show_reference_motion: b
     return
   motion_cfg.debug_vis = show_reference_motion
   student_sparse_vis_cfg.debug_vis = True
+
+
+def _motion_source_spec_for_play(cfg: PlayConfig) -> MotionSourceSpec:
+  explicit_sources = [
+    source
+    for source in (cfg.motion_file, cfg.motion_path, cfg.registry_name)
+    if source is not None
+  ]
+  if len(explicit_sources) > 1:
+    raise ValueError(
+      "Provide only one explicit motion source: motion_file, motion_path, or registry_name."
+    )
+  if cfg.motion_file is not None:
+    return MotionSourceSpec(motion_file=cfg.motion_file)
+  if cfg.motion_path is not None:
+    return MotionSourceSpec(motion_path=cfg.motion_path)
+  if cfg.registry_name is not None:
+    return MotionSourceSpec(wandb_registry_name=cfg.registry_name)
+  if cfg.wandb_run_path is not None:
+    return MotionSourceSpec(wandb_run_path=cfg.wandb_run_path)
+  return MotionSourceSpec()
+
+
+def _has_motion_source(spec: MotionSourceSpec) -> bool:
+  return any(
+    source is not None
+    for source in (
+      spec.motion_file,
+      spec.motion_path,
+      spec.wandb_run_path,
+      spec.wandb_registry_name,
+    )
+  )
+
+
+def _apply_tracking_motion_source(
+  env_cfg: Any,
+  cfg: PlayConfig,
+  *,
+  dummy_mode: bool,
+) -> AppliedMotionSource | None:
+  motion_cmd = env_cfg.commands.get("motion")
+  if not is_motion_command_cfg(motion_cmd):
+    return None
+
+  motion_cmd.motion_type = cfg.motion_type
+  if cfg._demo_mode and hasattr(motion_cmd, "sampling_mode"):
+    motion_cmd.sampling_mode = "uniform"
+
+  source_spec = _motion_source_spec_for_play(cfg)
+  if (dummy_mode or cfg.checkpoint_file is not None) and not _has_motion_source(
+    source_spec
+  ):
+    raise ValueError("Tracking tasks require a motion source.")
+
+  source = resolve_motion_source(source_spec)
+  applied_source = apply_motion_source_to_command(motion_cmd, source)
+  if applied_source is None:
+    return None
+  if applied_source.motion_file is not None:
+    print(f"[INFO]: Using motion file: {applied_source.motion_file}")
+  elif applied_source.motion_path is not None:
+    print(f"[INFO]: Using motion path: {applied_source.motion_path}")
+  return applied_source
 
 
 def _get_trained_policy(runner, device: str, stochastic: bool):
@@ -124,81 +192,7 @@ def run_play(task_id: str, cfg: PlayConfig):
   _configure_distillation_play_visualization(
     env_cfg, show_reference_motion=cfg.show_reference_motion
   )
-
-  # Check if this is a tracking task by checking for motion command.
-  is_tracking_task = "motion" in env_cfg.commands and isinstance(
-    env_cfg.commands["motion"], (MotionCommandCfg, MultiMotionCommandCfg)
-  )
-
-  if is_tracking_task and cfg._demo_mode:
-    # Demo mode: use uniform sampling to see more diversity with num_envs > 1.
-    motion_cmd = env_cfg.commands["motion"]
-    assert isinstance(motion_cmd, (MotionCommandCfg, MultiMotionCommandCfg))
-    motion_cmd.motion_type = cfg.motion_type
-    motion_cmd.sampling_mode = "uniform"
-
-  if is_tracking_task:
-    motion_cmd = env_cfg.commands["motion"]
-    assert isinstance(motion_cmd, (MotionCommandCfg, MultiMotionCommandCfg))
-    motion_cmd.motion_type = cfg.motion_type
-
-    # Check for local motion file first (works for both dummy and trained modes).
-    if cfg.motion_file is not None and not Path(cfg.motion_file).exists():
-      raise FileNotFoundError(f"Motion file not found: {cfg.motion_file}")
-    if cfg.motion_file is not None and Path(cfg.motion_file).exists():
-      print(f"[INFO]: Using local motion file: {cfg.motion_file}")
-      motion_cmd.motion_file = cfg.motion_file
-    elif DUMMY_MODE:
-      if not cfg.registry_name:
-        raise ValueError(
-          "Tracking tasks require either:\n"
-          "  --motion-file /path/to/motion.npz (local file)\n"
-          "  --registry-name your-org/motions/motion-name (download from WandB)"
-        )
-      # Check if the registry name includes alias, if not, append ":latest".
-      registry_name = cfg.registry_name
-      if ":" not in registry_name:
-        registry_name = registry_name + ":latest"
-      import wandb
-
-      api = wandb.Api()
-      artifact = api.artifact(registry_name)
-      artifact_dir = Path(artifact.download())
-      artifact_motion_file = artifact_dir / "motion.npz"
-      if not artifact_motion_file.exists():
-        raise ValueError(
-          "The registry artifact does not expose a default motion.npz for play. "
-          "Provide `--motion-file /path/to/motion.npz` explicitly."
-        )
-      motion_cmd.motion_file = str(artifact_motion_file)
-    else:
-      if cfg.motion_file is not None:
-        print(f"[INFO]: Using motion file from CLI: {cfg.motion_file}")
-        motion_cmd.motion_file = cfg.motion_file
-      else:
-        import wandb
-
-        api = wandb.Api()
-        if cfg.wandb_run_path is None and cfg.checkpoint_file is not None:
-          raise ValueError(
-            "Tracking tasks require `motion_file` when using `checkpoint_file`, "
-            "or provide `wandb_run_path` so the motion artifact can be resolved."
-          )
-        if cfg.wandb_run_path is not None:
-          wandb_run = api.run(str(cfg.wandb_run_path))
-          art = next(
-            (a for a in wandb_run.used_artifacts() if a.type == "motions"), None
-          )
-          if art is None:
-            raise RuntimeError("No motion artifact found in the run.")
-          artifact_dir = Path(art.download())
-          artifact_motion_file = artifact_dir / "motion.npz"
-          if not artifact_motion_file.exists():
-            raise ValueError(
-              "This run does not expose a single default motion.npz for play. "
-              "Provide `--motion-file /path/to/motion.npz` explicitly."
-            )
-          motion_cmd.motion_file = str(artifact_motion_file)
+  _apply_tracking_motion_source(env_cfg, cfg, dummy_mode=DUMMY_MODE)
 
   log_dir: Path | None = None
   resume_path: Path | None = None

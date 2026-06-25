@@ -16,12 +16,14 @@ PRIMARY_TRACKING_ID = "Mjlab-TrackingBFM-Flat-Unitree-G1"
 PRIMARY_1STAGE_ID = "Mjlab-TrackingBFM-Flat-Unitree-G1-1Stage"
 PRIMARY_WBTELEOP_ID = "Mjlab-TrackingBFM-Flat-Unitree-G1-WBTeleop"
 PENDING_TRACKING_LEGACY_IDS = {
-  "Mjlab-TrackingBFM-Flat-Unitree-G1-ActionTrunk",
-  "Mjlab-Trackingbfm-Flat-Unitree-G1-ActionTrunk",
   "Mjlab-TrackingBFM-Flat-Unitree-G1-TestOptimal",
   "Mjlab-Trackingbfm-Flat-Unitree-G1-TestOptimal",
   "Mjlab-TrackingBFM-Flat-Unitree-G1-TestOptimal-NoRegNoDR",
   "Mjlab-Trackingbfm-Flat-Unitree-G1-TestOptimal-NoRegNoDR",
+}
+REMOVED_TRACKING_LEGACY_IDS = {
+  "Mjlab-TrackingBFM-Flat-Unitree-G1-ActionTrunk",
+  "Mjlab-Trackingbfm-Flat-Unitree-G1-ActionTrunk",
 }
 
 
@@ -80,14 +82,12 @@ def test_tracking_legacy_aliases_resolve_to_matching_task_surface(
 
 
 def test_pending_tracking_legacy_candidates_are_retained_but_not_registered() -> None:
-  from tracking_bfm.tasks.tracking.config.g1 import env_cfgs, rl_cfg
+  from tracking_bfm.tasks.tracking.config.g1 import env_cfgs
 
   task_ids = set(list_tasks())
 
   assert PENDING_TRACKING_LEGACY_IDS.isdisjoint(task_ids)
-  assert callable(env_cfgs.unitree_g1_flat_tracking_bfm_action_trunk_env_cfg)
   assert callable(env_cfgs.unitree_g1_flat_tracking_bfm_test_optimal_env_cfg)
-  assert callable(rl_cfg.unitree_g1_trackingbfm_action_trunk_ppo_runner_cfg)
 
   cfg = env_cfgs.unitree_g1_flat_tracking_bfm_test_optimal_env_cfg(
     disable_reg_and_dr=True
@@ -95,6 +95,16 @@ def test_pending_tracking_legacy_candidates_are_retained_but_not_registered() ->
 
   assert "joint_pos_limits" not in cfg.events
   assert "push_robot" not in cfg.events
+
+
+def test_removed_action_trunk_is_not_registered_or_exposed() -> None:
+  from tracking_bfm.tasks.tracking.config.g1 import env_cfgs, rl_cfg
+
+  task_ids = set(list_tasks())
+
+  assert REMOVED_TRACKING_LEGACY_IDS.isdisjoint(task_ids)
+  assert not hasattr(env_cfgs, "unitree_g1_flat_tracking_bfm_action_trunk_env_cfg")
+  assert not hasattr(rl_cfg, "unitree_g1_trackingbfm_action_trunk_ppo_runner_cfg")
 
 
 def test_tracking_reuses_upstream_observation_and_termination_terms() -> None:
