@@ -56,9 +56,9 @@ def _build_env(task_id: str, tmp_motion_root: Path) -> ManagerBasedRlEnv:
   return ManagerBasedRlEnv(cfg=env_cfg, device="cpu")
 
 
-def _assert_observation_batch(obs: dict[str, torch.Tensor], env: ManagerBasedRlEnv) -> (
-  None
-):
+def _assert_observation_batch(
+  obs: dict[str, torch.Tensor], env: ManagerBasedRlEnv
+) -> None:
   assert "actor" in obs
   assert obs["actor"].shape[0] == env.num_envs
 
