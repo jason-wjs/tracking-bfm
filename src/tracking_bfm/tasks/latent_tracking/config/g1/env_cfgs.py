@@ -89,7 +89,7 @@ def _make_sparse_tracking_rewards() -> dict[str, RewardTermCfg]:
 
 
 def _make_tracking_bfm_1stage_env_cfg(*, play: bool = False) -> ManagerBasedRlEnvCfg:
-  from tracking_bfm.tasks.tracking.env_cfgs import (
+  from tracking_bfm.tasks.tracking.config.g1.env_cfgs import (
     unitree_g1_flat_tracking_bfm_1stage_env_cfg,
   )
 

@@ -56,6 +56,25 @@ def test_package_layout_uses_tracking_bfm_namespace() -> None:
   assert PYPROJECT["project"]["name"] == "tracking-bfm"
 
 
+def test_tracking_uses_canonical_config_modules_without_root_facades() -> None:
+  tracking_dir = ROOT / "src" / "tracking_bfm" / "tasks" / "tracking"
+
+  assert not (tracking_dir / "env_cfgs.py").exists()
+  assert not (tracking_dir / "rl_cfg.py").exists()
+  assert (tracking_dir / "config" / "g1" / "env_cfgs.py").is_file()
+  assert (tracking_dir / "config" / "g1" / "rl_cfg.py").is_file()
+  assert (tracking_dir / "wbteleop" / "env_cfg.py").is_file()
+  assert (tracking_dir / "wbteleop" / "rl_cfg.py").is_file()
+
+  source_text = "\n".join(
+    path.read_text()
+    for path in (ROOT / "src" / "tracking_bfm").rglob("*.py")
+    if "__pycache__" not in path.parts
+  )
+  assert "tracking_bfm.tasks.tracking.env_cfgs" not in source_text
+  assert "tracking_bfm.tasks.tracking.rl_cfg" not in source_text
+
+
 def test_tracking_bfm_init_does_not_hide_missing_hard_dependencies() -> None:
   package_init = (ROOT / "src" / "tracking_bfm" / "__init__.py").read_text()
 
@@ -146,6 +165,7 @@ def test_architecture_context_and_migration_docs_exist() -> None:
     "bfm-owned",
     "compat-shim",
     "legacy-candidate",
+    "removed-facade",
     "multi_motion_command.py",
     "wbteleop/",
   ):

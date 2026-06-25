@@ -51,6 +51,12 @@ The Module or function supports an old fork task surface that is not currently
 registered. It should be registered, documented as removed, or deleted after a
 checkpoint/job compatibility decision.
 
+**removed-facade**
+
+The Module was a shallow re-export layer whose callers can use the canonical
+implementation Module directly. It should not be recreated unless a compatibility
+contract explicitly requires it.
+
 **needs-seam**
 
 The Module contains behavior that belongs behind a deeper interface before
@@ -65,8 +71,8 @@ further cleanup, such as Motion source resolution.
 | `tracking/config/g1/__init__.py` | bfm-owned | Registers BFM primary task IDs and legacy aliases. | Keep; update only through migration decisions. |
 | `tracking/config/g1/env_cfgs.py` | bfm-owned | Owns G1 BFM env cfgs, including registered optimality probes. | Keep BFM primary cfgs aligned with `docs/migration.md`. |
 | `tracking/config/g1/rl_cfg.py` | bfm-owned | Owns BFM runner cfgs for registered tracking variants. | Keep registered configs aligned with task parity decisions. |
-| `tracking/env_cfgs.py` | bfm-owned | Public convenience exports for BFM tracking env cfg builders. | Keep; align with registered surface. |
-| `tracking/rl_cfg.py` | bfm-owned | Public convenience exports for BFM tracking and WBTeleop runner configs. | Keep; align with registered surface. |
+| `tracking/env_cfgs.py` | removed-facade | Former public convenience exports duplicated ownership between `tracking/config/g1/` and `tracking/wbteleop/`. | Removed; import env cfg builders from their canonical implementation Modules. |
+| `tracking/rl_cfg.py` | removed-facade | Former public convenience exports duplicated ownership between `tracking/config/g1/` and `tracking/wbteleop/`. | Removed; import RL cfg builders from their canonical implementation Modules. |
 | `tracking/tracking_env_cfg.py` | bfm-owned, needs-seam | Forked from generic tracking but now includes BFM actor terms, body refs, command-class injection, and reward/termination deltas. | Keep for now; later isolate BFM deltas from reusable upstream pieces. |
 | `tracking/mdp/__init__.py` | bfm-owned | Re-exports local tracking MDP terms and commands. | Keep while local MDP deltas exist. |
 | `tracking/mdp/commands.py` | bfm-owned | Single-motion command differs from upstream and supports BFM metrics/behavior. | Keep; later compare for possible lower-level Motion dataset seam. |

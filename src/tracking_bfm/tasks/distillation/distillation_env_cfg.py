@@ -24,7 +24,9 @@ class StudentCommandConfig:
 
 
 def _make_tracking_bfm_env_cfg(*, play: bool = False):
-  from tracking_bfm.tasks.tracking.env_cfgs import unitree_g1_flat_tracking_bfm_env_cfg
+  from tracking_bfm.tasks.tracking.config.g1.env_cfgs import (
+    unitree_g1_flat_tracking_bfm_env_cfg,
+  )
 
   return unitree_g1_flat_tracking_bfm_env_cfg(play=play)
 
