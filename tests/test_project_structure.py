@@ -47,6 +47,13 @@ def test_package_layout_uses_tracking_bfm_namespace() -> None:
   assert PYPROJECT["project"]["name"] == "tracking-bfm"
 
 
+def test_tracking_bfm_init_does_not_hide_missing_hard_dependencies() -> None:
+  package_init = (ROOT / "src" / "tracking_bfm" / "__init__.py").read_text()
+
+  assert "except ModuleNotFoundError" not in package_init
+  assert "from tracking_bfm import tasks as tasks" in package_init
+
+
 def test_pyproject_registers_mjlab_tasks_entry_point() -> None:
   entry_points = PYPROJECT["project"]["entry-points"]["mjlab.tasks"]
   assert entry_points["tracking_bfm"] == "tracking_bfm"
@@ -81,3 +88,55 @@ def test_readme_documents_module_boundaries_and_commands() -> None:
     "uv run tracking-bfm-export-onnx",
   ):
     assert command in readme
+
+
+def test_architecture_context_and_migration_docs_exist() -> None:
+  context = (ROOT / "CONTEXT.md").read_text()
+  adr = (ROOT / "docs" / "adr" / "0001-standalone-mjlab-dependency.md").read_text()
+  migration = (ROOT / "docs" / "migration.md").read_text()
+  motion_source = (ROOT / "docs" / "architecture" / "motion-source.md").read_text()
+  tracking_cleanup = (
+    ROOT / "docs" / "architecture" / "tracking-cleanup.md"
+  ).read_text()
+
+  for term in ("BFM task package", "Motion source", "Legacy task alias"):
+    assert term in context
+
+  for decision in (
+    "depend on mjlab as an external package",
+    "do not vendor or fork mjlab",
+    "do not import private mjlab script modules",
+  ):
+    assert decision in adr
+
+  for feature in (
+    "Mjlab-TrackingBFM-Flat-Unitree-G1",
+    "Mjlab-Trackingbfm-Flat-Unitree-G1",
+    "ActionTrunk",
+    "DistillationWbteleopObs",
+    "TestOptimal",
+    "NoRegNoDR",
+    "Rough",
+    "Mjlab-Trackingbfm-Flat-Unitree-G1-ActionTrunk",
+    "Mjlab-LatentRL-Rough-Unitree-G1",
+    "pending; do not register or delete",
+  ):
+    assert feature in migration
+
+  for item in (
+    "MotionSourceSpec",
+    "apply_motion_source_to_command",
+    "First Migration Batch",
+    "Deferred Work",
+  ):
+    assert item in motion_source
+
+  for item in (
+    "reuse-upstream",
+    "bfm-owned",
+    "compat-shim",
+    "legacy-candidate",
+    "multi_motion_command.py",
+    "wbteleop/",
+  ):
+    assert item in tracking_cleanup

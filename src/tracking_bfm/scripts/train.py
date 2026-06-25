@@ -6,13 +6,12 @@ import sys
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 import mjlab
 import tyro
 from mjlab.envs import ManagerBasedRlEnv, ManagerBasedRlEnvCfg
 from mjlab.rl import MjlabOnPolicyRunner, RslRlBaseRunnerCfg, RslRlVecEnvWrapper
-from mjlab.scripts._cli import maybe_print_top_level_help
 from mjlab.tasks.registry import list_tasks, load_env_cfg, load_rl_cfg, load_runner_cls
 from mjlab.utils.gpu import select_gpus
 from mjlab.utils.os import (
@@ -24,10 +23,14 @@ from mjlab.utils.torch import configure_torch_backends
 from mjlab.utils.wandb import add_wandb_tags
 from mjlab.utils.wrappers import VideoRecorder
 
-from tracking_bfm.tasks.tracking.mdp import MotionCommandCfg
-from tracking_bfm.tasks.tracking.mdp.multi_commands import (
-  MotionCommandCfg as MultiMotionCommandCfg,
+from tracking_bfm.motion_source import (
+  MotionSourceSpec,
+  apply_motion_source_to_command,
+  is_motion_command_cfg,
+  motion_command_source_shape,
+  resolve_motion_source,
 )
+from tracking_bfm.scripts.cli_helpers import maybe_print_top_level_help
 
 
 @dataclass(frozen=True)
@@ -89,17 +92,15 @@ def run_train(task_id: str, cfg: TrainConfig, log_dir: Path) -> None:
   registry_name: str | None = None
 
   # Check if this is a tracking task by checking for motion command.
-  is_tracking_task = "motion" in cfg.env.commands and (isinstance(
-    cfg.env.commands["motion"], MotionCommandCfg
-  ) or isinstance(
-    cfg.env.commands["motion"], MultiMotionCommandCfg
-  ))
+  is_tracking_task = "motion" in cfg.env.commands and is_motion_command_cfg(
+    cfg.env.commands["motion"]
+  )
 
   if is_tracking_task:
-    motion_cmd = cfg.env.commands["motion"]
-    assert isinstance(motion_cmd, (MotionCommandCfg, MultiMotionCommandCfg))
+    motion_cmd = cast(Any, cfg.env.commands["motion"])
+    source_shape = motion_command_source_shape(motion_cmd)
 
-    if isinstance(motion_cmd, MotionCommandCfg):
+    if source_shape == "single":
       motion_label = "motion file"
       motion_arg = "--env.commands.motion.motion-file /path/to/motion.npz"
       has_local_motion = bool(motion_cmd.motion_file) and Path(
@@ -113,24 +114,18 @@ def run_train(task_id: str, cfg: TrainConfig, log_dir: Path) -> None:
       ).is_dir()
 
     if has_local_motion:
-      if isinstance(motion_cmd, MotionCommandCfg):
+      if source_shape == "single":
         print(f"[INFO] Using local {motion_label}: {motion_cmd.motion_file}")
       else:
         print(f"[INFO] Using local {motion_label}: {motion_cmd.motion_path}")
     elif cfg.registry_name:
       # Download from WandB registry.
-      registry_name = cast(str, cfg.registry_name)
-      if ":" not in registry_name:
-        registry_name = registry_name + ":latest"
-      import wandb
-
-      api = wandb.Api()
-      artifact = api.artifact(registry_name)
-      artifact_dir = Path(artifact.download())
-      if isinstance(motion_cmd, MotionCommandCfg):
-        motion_cmd.motion_file = str(artifact_dir / "motion.npz")
-      else:
-        motion_cmd.motion_path = str(artifact_dir)
+      source = resolve_motion_source(
+        MotionSourceSpec(wandb_registry_name=cfg.registry_name),
+        required=True,
+      )
+      applied_source = apply_motion_source_to_command(motion_cmd, source)
+      registry_name = applied_source.registry_name if applied_source else None
     else:
       raise ValueError(
         "For tracking tasks, provide either:\n"
@@ -275,7 +270,7 @@ def launch_training(task_id: str, args: TrainConfig | None = None):
 
 
 def main():
-  maybe_print_top_level_help("train")
+  maybe_print_top_level_help("tracking-bfm-train")
 
   # Parse first argument to choose the task.
   # Import tasks to populate the registry.

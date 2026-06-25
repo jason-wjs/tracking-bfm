@@ -13,11 +13,11 @@ import torch
 import tyro
 from mjlab.envs import ManagerBasedRlEnv
 from mjlab.rl import RslRlVecEnvWrapper
-from mjlab.scripts._cli import maybe_print_top_level_help
 from mjlab.tasks.registry import list_tasks, load_env_cfg, load_rl_cfg, load_runner_cls
 from mjlab.utils.torch import configure_torch_backends
 from tensordict import TensorDict
 
+from tracking_bfm.scripts.cli_helpers import maybe_print_top_level_help
 from tracking_bfm.tasks.tracking.mdp.multi_commands import (
   MotionCommandCfg as MultiMotionCommandCfg,
 )
@@ -392,7 +392,7 @@ def run_analysis(task_id: str, cfg: LatentSpaceAnalysisConfig) -> Path:
 
 
 def main() -> None:
-  maybe_print_top_level_help("analyze-latent-space")
+  maybe_print_top_level_help("tracking-bfm-analyze-latent-space")
   import tracking_bfm.tasks  # noqa: F401
 
   task_id, remaining_args = tyro.cli(

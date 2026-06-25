@@ -14,7 +14,6 @@ import torch
 import tyro
 from mjlab.envs import ManagerBasedRlEnv, ManagerBasedRlEnvCfg
 from mjlab.rl import MjlabOnPolicyRunner, RslRlBaseRunnerCfg, RslRlVecEnvWrapper
-from mjlab.scripts._cli import maybe_print_top_level_help
 from mjlab.tasks.registry import list_tasks, load_env_cfg, load_rl_cfg, load_runner_cls
 from mjlab.utils.os import get_wandb_checkpoint_path
 from mjlab.utils.torch import configure_torch_backends
@@ -22,6 +21,7 @@ from mjlab.utils.wrappers import VideoRecorder
 from mjlab.viewer import NativeMujocoViewer, ViserPlayViewer
 from mjlab.viewer.viser.viewer import CheckpointManager, format_time_ago
 
+from tracking_bfm.scripts.cli_helpers import maybe_print_top_level_help
 from tracking_bfm.tasks.tracking.mdp import MotionCommandCfg
 from tracking_bfm.tasks.tracking.mdp.multi_commands import (
   MotionCommandCfg as MultiMotionCommandCfg,
@@ -374,7 +374,7 @@ def run_play(task_id: str, cfg: PlayConfig):
 
 
 def main():
-  maybe_print_top_level_help("play")
+  maybe_print_top_level_help("tracking-bfm-play")
 
   # Parse first argument to choose the task.
   # Import tasks to populate the registry.

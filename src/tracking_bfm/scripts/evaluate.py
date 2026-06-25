@@ -6,7 +6,7 @@ import json
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import mjlab
 import torch
@@ -18,7 +18,13 @@ from mjlab.tasks.registry import list_tasks, load_env_cfg, load_rl_cfg, load_run
 from mjlab.utils.os import get_wandb_checkpoint_path
 from mjlab.utils.torch import configure_torch_backends
 
-from tracking_bfm.tasks.tracking.mdp import MotionCommandCfg
+from tracking_bfm.motion_source import (
+  MotionSourceSpec,
+  apply_motion_source_to_command,
+  is_motion_command_cfg,
+  resolve_motion_source,
+)
+from tracking_bfm.scripts.cli_helpers import maybe_print_top_level_help
 from tracking_bfm.tasks.tracking.mdp.commands import MotionCommand
 from tracking_bfm.tasks.tracking.mdp.metrics import (
   compute_ee_orientation_error,
@@ -26,9 +32,6 @@ from tracking_bfm.tasks.tracking.mdp.metrics import (
   compute_joint_velocity_error,
   compute_mpkpe,
   compute_root_relative_mpkpe,
-)
-from tracking_bfm.tasks.tracking.mdp.multi_commands import (
-  MotionCommandCfg as MultiMotionCommandCfg,
 )
 
 
@@ -58,20 +61,18 @@ def run_evaluate(task_id: str, cfg: EvaluateConfig) -> dict[str, float]:
   agent_cfg = load_rl_cfg(task_id)
 
   motion_cmd = env_cfg.commands.get("motion")
-  if not isinstance(motion_cmd, (MotionCommandCfg, MultiMotionCommandCfg)):
+  if not is_motion_command_cfg(motion_cmd):
     raise ValueError(f"Task {task_id} is not a tracking task.")
+  motion_cmd = cast(Any, motion_cmd)
 
   # Load motion file from W&B run.
   api = wandb.Api()
-  run = api.run(cfg.wandb_run_path)
-  art = next((a for a in run.used_artifacts() if a.type == "motions"), None)
-  if art is None:
-    raise RuntimeError("No motion artifact found in the run.")
-  artifact_dir = Path(art.download())
-  if isinstance(motion_cmd, MotionCommandCfg):
-    motion_cmd.motion_file = str(artifact_dir / "motion.npz")
-  else:
-    motion_cmd.motion_path = str(artifact_dir)
+  source = resolve_motion_source(
+    MotionSourceSpec(wandb_run_path=cfg.wandb_run_path),
+    wandb_api=api,
+    required=True,
+  )
+  apply_motion_source_to_command(motion_cmd, source)
 
   # Evaluation config.
   motion_cmd.sampling_mode = "start"
@@ -188,6 +189,8 @@ def run_evaluate(task_id: str, cfg: EvaluateConfig) -> dict[str, float]:
 
 
 def main():
+  maybe_print_top_level_help("tracking-bfm-evaluate")
+
   import tracking_bfm.tasks  # noqa: F401
 
   tracking_tasks = [t for t in list_tasks() if "Tracking" in t]

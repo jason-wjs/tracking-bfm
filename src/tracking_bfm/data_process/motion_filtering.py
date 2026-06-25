@@ -12,6 +12,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal, cast
 
+from tracking_bfm.motion_source import (
+  MotionSourceSpec,
+  apply_motion_source_to_command,
+  collect_motion_files,
+  resolve_motion_source,
+  shard_motion_files,
+)
+
 MotionType = Literal["isaaclab", "mujoco"]
 ViewerMode = Literal["none", "auto", "native", "viser"]
 GpuIds = list[int] | Literal["all"] | None
@@ -137,8 +145,11 @@ def _configure_motion_command(
 ) -> None:
   """Apply CLI motion overrides to the filtering motion command."""
 
-  motion_cmd.motion_path = motion_path
-  motion_cmd.motion_file = ""
+  source = resolve_motion_source(
+    MotionSourceSpec(motion_path=motion_path),
+    required=True,
+  )
+  apply_motion_source_to_command(motion_cmd, source)
   motion_cmd.motion_type = motion_type
   if history_steps is not None:
     motion_cmd.history_steps = history_steps
@@ -147,39 +158,29 @@ def _configure_motion_command(
 
 
 def _collect_motion_files(motion_root: str) -> list[Path]:
-  motion_root_path = Path(motion_root)
-  if not motion_root_path.exists():
-    raise FileNotFoundError(f"Motion path not found: {motion_root}")
-  if not motion_root_path.is_dir():
-    raise ValueError(f"motion_path must be a directory: {motion_root}")
-
-  motion_files = sorted(
-    path
-    for path in motion_root_path.rglob("*")
-    if path.is_file() and path.suffix.lower() == ".npz"
-  )
-  if not motion_files:
-    raise ValueError(f"No .npz motion files found under: {motion_root}")
-  return motion_files
+  return collect_motion_files(motion_root)
 
 
 def _resolve_motion_root(cfg: EvaluateConfig | Any) -> str:
   if cfg.motion_path is not None:
     return cfg.motion_path
-  if cfg.wandb_run_path is None:
+  if cfg.motion_path is None and cfg.wandb_run_path is None:
     raise ValueError(
       "Provide --motion-path explicitly, or provide --wandb-run-path so the motion "
       "artifact can be resolved."
     )
 
-  import wandb
-
-  api = wandb.Api()
-  run = api.run(str(cfg.wandb_run_path))
-  artifact = next((a for a in run.used_artifacts() if a.type == "motions"), None)
-  if artifact is None:
-    raise RuntimeError("No motion artifact found in the W&B run.")
-  return str(Path(artifact.download()))
+  source = resolve_motion_source(
+    MotionSourceSpec(
+      motion_path=cfg.motion_path,
+      wandb_run_path=(
+        str(cfg.wandb_run_path) if cfg.wandb_run_path is not None else None
+      ),
+    ),
+    required=True,
+  )
+  assert source is not None
+  return str(source.path)
 
 
 def _resolve_checkpoint_path(task_id: str, cfg: EvaluateConfig | Any) -> tuple[Path, str]:
@@ -351,9 +352,7 @@ def _shard_motion_files(
   world_size: int,
   rank: int,
 ) -> list[Path]:
-  if world_size <= 1:
-    return motion_files
-  return motion_files[rank::world_size]
+  return shard_motion_files(motion_files, world_size=world_size, rank=rank)
 
 
 def _runtime_rank_context(cfg: EvaluateConfig | Any) -> tuple[str, int, int]:

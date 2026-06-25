@@ -6,6 +6,9 @@ import sys
 import types
 from contextlib import contextmanager
 from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -160,3 +163,45 @@ def test_cli_wrappers_are_importable_and_parse_core_arguments(tmp_path: Path) ->
   assert generate_args.completion_threshold == 0.95
   assert delete_args.execute is False
   assert execute_delete_args.execute is True
+
+
+def test_motion_filtering_configures_motion_source_and_history_steps() -> None:
+  with _data_process_modules():
+    motion_filtering = importlib.import_module(
+      "tracking_bfm.data_process.motion_filtering"
+    )
+
+  command = SimpleNamespace(motion_file="old.npz", motion_path="")
+
+  motion_filtering._configure_motion_command(
+    command,
+    motion_path="motions",
+    motion_type="mujoco",
+    history_steps=2,
+    future_steps=3,
+  )
+
+  assert command.motion_file == ""
+  assert command.motion_path == "motions"
+  assert command.motion_type == "mujoco"
+  assert command.history_steps == 2
+  assert command.future_steps == 3
+
+
+def test_motion_filtering_prefers_explicit_motion_path_without_wandb_lookup(
+  monkeypatch: pytest.MonkeyPatch,
+  tmp_path: Path,
+) -> None:
+  with _data_process_modules():
+    motion_filtering = importlib.import_module(
+      "tracking_bfm.data_process.motion_filtering"
+    )
+
+  class FailingApi:
+    def __init__(self) -> None:
+      raise AssertionError("explicit motion_path should not touch W&B")
+
+  monkeypatch.setitem(sys.modules, "wandb", SimpleNamespace(Api=FailingApi))
+  cfg = SimpleNamespace(motion_path=str(tmp_path), wandb_run_path="entity/project/run")
+
+  assert motion_filtering._resolve_motion_root(cfg) == str(tmp_path)

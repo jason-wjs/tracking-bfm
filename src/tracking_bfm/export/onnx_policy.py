@@ -15,6 +15,11 @@ from tracking_bfm.export.checkpoint import (
   resolve_onnx_output_path,
 )
 from tracking_bfm.export.metadata import build_policy_metadata
+from tracking_bfm.motion_source import (
+  MotionSourceSpec,
+  apply_motion_source_to_command,
+  resolve_motion_source,
+)
 
 
 def resolve_policy_onnx_path(
@@ -82,27 +87,14 @@ def _apply_motion_source(
   motion_file: str | Path | None = None,
 ) -> None:
   """Apply an optional local motion source to tracking task env config."""
-  if motion_path is not None and motion_file is not None:
-    raise ValueError("Provide only one of `motion_path` or `motion_file`.")
-
+  source = resolve_motion_source(
+    MotionSourceSpec(motion_file=motion_file, motion_path=motion_path)
+  )
   motion_cfg = getattr(env_cfg, "commands", {}).get("motion")
-  if motion_cfg is None or (motion_path is None and motion_file is None):
+  if motion_cfg is None or source is None:
     return
 
-  if motion_path is not None:
-    if not hasattr(motion_cfg, "motion_path"):
-      raise ValueError("This task motion command does not support `motion_path`.")
-    motion_cfg.motion_path = str(motion_path)
-    if hasattr(motion_cfg, "motion_file"):
-      motion_cfg.motion_file = ""
-    return
-
-  if motion_file is not None:
-    if not hasattr(motion_cfg, "motion_file"):
-      raise ValueError("This task motion command does not support `motion_file`.")
-    motion_cfg.motion_file = str(motion_file)
-    if hasattr(motion_cfg, "motion_path"):
-      motion_cfg.motion_path = ""
+  apply_motion_source_to_command(motion_cfg, source)
 
 
 def _apply_distillation_student_obs_overrides(

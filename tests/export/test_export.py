@@ -18,6 +18,7 @@ from tracking_bfm.export.onnx_latent_policy import (
   resolve_latent_policy_onnx_path,
 )
 from tracking_bfm.export.onnx_policy import (
+  _apply_motion_source,
   export_actor_model_to_onnx,
   resolve_policy_onnx_path,
 )
@@ -131,6 +132,33 @@ def test_latent_export_checks_overwrite_before_touching_models(tmp_path: Path) -
 
   assert actor.called is False
   assert decoder.called is False
+
+
+def test_export_motion_source_wrapper_sets_multi_motion_path() -> None:
+  class Command:
+    motion_file = "old.npz"
+    motion_path = ""
+
+  class EnvCfg:
+    commands = {"motion": Command()}
+
+  cfg = EnvCfg()
+
+  _apply_motion_source(cfg, motion_path="motions")
+
+  assert cfg.commands["motion"].motion_path == "motions"
+  assert cfg.commands["motion"].motion_file == ""
+
+
+def test_export_motion_source_wrapper_rejects_motion_path_for_single_command() -> None:
+  class Command:
+    motion_file = ""
+
+  class EnvCfg:
+    commands = {"motion": Command()}
+
+  with pytest.raises(ValueError, match="does not support `motion_path`"):
+    _apply_motion_source(EnvCfg(), motion_path="motions")
 
 
 def test_metadata_helpers_return_minimal_string_metadata() -> None:

@@ -20,6 +20,8 @@ ROOT_QUICK_SCRIPTS = {
   "diagnostics.sh": "tracking-bfm-inspect-checkpoint",
 }
 
+PRIMARY_TRACKING_ID = "Mjlab-TrackingBFM-Flat-Unitree-G1"
+
 
 def _definitions(path: Path) -> set[str]:
   tree = ast.parse(path.read_text(encoding="utf-8"))
@@ -28,6 +30,20 @@ def _definitions(path: Path) -> set[str]:
     for node in tree.body
     if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
   }
+
+
+def _mjlab_scripts_imports(path: Path) -> list[str]:
+  tree = ast.parse(path.read_text(encoding="utf-8"))
+  imports = []
+  for node in ast.walk(tree):
+    if isinstance(node, ast.Import):
+      for alias in node.names:
+        if alias.name == "mjlab.scripts" or alias.name.startswith("mjlab.scripts."):
+          imports.append(alias.name)
+    elif isinstance(node, ast.ImportFrom) and node.module is not None:
+      if node.module == "mjlab.scripts" or node.module.startswith("mjlab.scripts."):
+        imports.append(node.module)
+  return imports
 
 
 def test_train_play_evaluate_expose_main_entrypoints() -> None:
@@ -59,15 +75,13 @@ def test_root_quick_scripts_are_workflow_level_wrappers() -> None:
 
 
 def test_root_quick_scripts_document_workflow_usage() -> None:
-  script_readme = (ROOT / "scripts" / "README.md").read_text()
+  assert not (ROOT / "scripts" / "README.md").exists()
   project_readme = (ROOT / "README.md").read_text()
-
-  for script_name in ROOT_QUICK_SCRIPTS:
-    assert f"./scripts/{script_name}" in script_readme
 
   for command in (
     "./scripts/train.sh",
     "./scripts/play.sh",
+    "./scripts/evaluate.sh",
     "./scripts/export.sh",
     "./scripts/data_process.sh",
     "./scripts/diagnostics.sh",
@@ -88,6 +102,77 @@ def test_script_modules_importable() -> None:
   for module_name in module_names:
     module = importlib.import_module(module_name)
     assert callable(module.main)
+
+
+def test_top_level_help_exits_before_tyro_task_parse(monkeypatch, capsys) -> None:
+  from tracking_bfm.scripts.cli_helpers import maybe_print_top_level_help
+
+  monkeypatch.setattr(sys, "argv", ["tracking-bfm-train", "--help"])
+
+  with pytest.raises(SystemExit) as exc_info:
+    maybe_print_top_level_help("tracking-bfm-train")
+
+  assert exc_info.value.code == 0
+  output = capsys.readouterr().out
+  assert "usage: tracking-bfm-train <TASK> [OPTIONS]" in output
+  assert "tracking-bfm-train <TASK> --help" in output
+  assert "uv run list-envs" in output
+
+
+@pytest.mark.parametrize(
+  ("module_name", "command_name"),
+  [
+    ("tracking_bfm.scripts.train", "tracking-bfm-train"),
+    ("tracking_bfm.scripts.play", "tracking-bfm-play"),
+    ("tracking_bfm.scripts.evaluate", "tracking-bfm-evaluate"),
+    (
+      "tracking_bfm.scripts.diagnostics.analyze_latent_space",
+      "tracking-bfm-analyze-latent-space",
+    ),
+  ],
+)
+def test_tyro_task_entrypoints_show_console_script_top_level_help(
+  monkeypatch, capsys, module_name: str, command_name: str
+) -> None:
+  module = importlib.import_module(module_name)
+  monkeypatch.setattr(sys, "argv", [command_name, "--help"])
+
+  with pytest.raises(SystemExit) as exc_info:
+    module.main()
+
+  assert exc_info.value.code == 0
+  output = capsys.readouterr().out
+  assert f"usage: {command_name} <TASK> [OPTIONS]" in output
+  assert f"{command_name} <TASK> --help" in output
+
+
+def test_tracking_bfm_scripts_do_not_import_mjlab_private_cli() -> None:
+  source_root = ROOT / "src" / "tracking_bfm"
+
+  offenders = {
+    path: imports
+    for path in source_root.rglob("*.py")
+    if (imports := _mjlab_scripts_imports(path))
+  }
+
+  assert offenders == {}
+
+
+def test_motion_source_recognizes_registered_multi_motion_command() -> None:
+  pytest.importorskip("mjlab")
+
+  from mjlab.tasks.registry import load_env_cfg
+
+  import tracking_bfm  # noqa: F401
+  from tracking_bfm.motion_source import (
+    is_motion_command_cfg,
+    motion_command_source_shape,
+  )
+
+  motion_cmd = load_env_cfg(PRIMARY_TRACKING_ID).commands["motion"]
+
+  assert is_motion_command_cfg(motion_cmd)
+  assert motion_command_source_shape(motion_cmd) == "multi"
 
 
 def test_inspect_checkpoint_prints_json(tmp_path: Path, capsys) -> None:
