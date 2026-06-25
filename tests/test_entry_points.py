@@ -14,8 +14,7 @@ EXPECTED_SCRIPT_ENTRY_POINTS = {
   "tracking-bfm-train": "tracking_bfm.scripts.train:main",
   "tracking-bfm-play": "tracking_bfm.scripts.play:main",
   "tracking-bfm-evaluate": "tracking_bfm.scripts.evaluate:main",
-  "tracking-bfm-export-onnx": "tracking_bfm.scripts.export_onnx:main",
-  "tracking-bfm-export-latent-onnx": "tracking_bfm.scripts.export_latent_onnx:main",
+  "tracking-bfm-export": "tracking_bfm.scripts.export:main",
   "tracking-bfm-filter-motions": (
     "tracking_bfm.scripts.data_process.filter_motions:main"
   ),
@@ -42,6 +41,9 @@ def test_planned_console_scripts_are_registered() -> None:
   scripts = load_pyproject()["project"]["scripts"]
 
   assert scripts == EXPECTED_SCRIPT_ENTRY_POINTS
+  assert "tracking-bfm-export" in scripts
+  assert "tracking-bfm-export-onnx" not in scripts
+  assert "tracking-bfm-export-latent-onnx" not in scripts
 
 
 def test_console_scripts_point_to_tracking_bfm_main_functions() -> None:

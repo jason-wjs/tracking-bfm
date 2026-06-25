@@ -18,7 +18,7 @@ from mjlab.utils.torch import configure_torch_backends
 from tensordict import TensorDict
 
 from tracking_bfm.scripts.cli_helpers import maybe_print_top_level_help
-from tracking_bfm.tasks.tracking.mdp.multi_commands import (
+from tracking_bfm.tasks.tracking.mdp.multi_motion_command import (
   MotionCommandCfg as MultiMotionCommandCfg,
 )
 

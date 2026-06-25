@@ -28,23 +28,6 @@ Use these IDs for new training, play, export, and evaluation runs:
 - `Mjlab-LatentVelocityBFM-Flat-Unitree-G1`
 - `Mjlab-LatentVelocityBFM-Rough-Unitree-G1`
 
-## Legacy Aliases
-
-The package also registers legacy aliases for compatibility with older jobs,
-checkpoints, and scripts. Prefer the primary IDs above in new references.
-
-- `Mjlab-Trackingbfm-Flat-Unitree-G1`
-- `Mjlab-Trackingbfm-Flat-Unitree-G1-1Stage`
-- `Mjlab-Trackingbfm-Flat-Unitree-G1-wbteleop`
-- `Mjlab-Trackingbfm-Flat-Unitree-G1-TestOptimal`
-- `Mjlab-Trackingbfm-Flat-Unitree-G1-TestOptimal-NoRegNoDR`
-- `Mjlab-Distillation-Flat-Unitree-G1`
-- `Mjlab-DistillationWbteleopObs-Flat-Unitree-G1`
-- `Mjlab-LatentDistillation-Flat-Unitree-G1`
-- `Mjlab-LatentTrackingbfm-Flat-Unitree-G1-1Stage`
-- `Mjlab-LatentRL-Flat-Unitree-G1`
-- `Mjlab-LatentRL-Rough-Unitree-G1`
-
 ## Module Boundaries
 
 - `tracking_bfm.tasks` owns BFM task config construction and registration.
@@ -63,8 +46,8 @@ a dependency only.
 uv run tracking-bfm-train Mjlab-TrackingBFM-Flat-Unitree-G1
 uv run tracking-bfm-play Mjlab-TrackingBFM-Flat-Unitree-G1
 uv run tracking-bfm-evaluate Mjlab-TrackingBFM-Flat-Unitree-G1
-uv run tracking-bfm-export-onnx --help
-uv run tracking-bfm-export-latent-onnx --help
+uv run tracking-bfm-export policy --help
+uv run tracking-bfm-export latent --help
 uv run tracking-bfm-filter-motions --help
 uv run tracking-bfm-generate-motion-dataset --help
 uv run tracking-bfm-delete-failed-motions --help
@@ -87,7 +70,7 @@ CHECKPOINT_FILE=/path/to/model.pt MOTION_FILE=/path/to/motion.npz \
 
 WANDB_RUN_PATH=entity/project/run_id ./scripts/evaluate.sh
 
-CHECKPOINT=/path/to/model.pt TASK=Mjlab-DistillationBFM-Flat-Unitree-G1 \
+MODE=policy CHECKPOINT=/path/to/model.pt TASK=Mjlab-DistillationBFM-Flat-Unitree-G1 \
   ./scripts/export.sh
 
 MODE=latent CHECKPOINT=/path/to/latent_actor.pt \

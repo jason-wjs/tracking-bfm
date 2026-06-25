@@ -22,6 +22,10 @@ from mjlab.utils.lab_api.math import (
 )
 from mjlab.viewer.debug_visualizer import DebugVisualizer
 
+from tracking_bfm.tasks.tracking.mdp.adaptive_sampling import (
+  AdaptiveSamplingConfig,
+  AdaptiveSamplingState,
+)
 from tracking_bfm.tasks.tracking.mdp.motion_dataset import ReferenceMotionDataset
 
 if TYPE_CHECKING:
@@ -72,56 +76,28 @@ class MultiMotionCommand(CommandTerm):
     )
     self.body_quat_relative_w[:, :, 0] = 1.0
 
-    # Adaptive sampling bins are tracked per-motion on a shared global bin axis.
-    # Each motion only uses the prefix indicated by bin_valid_mask.
-    max_motion_length = self.motion.file_lengths.max().item()
     if self.cfg.adaptive_bin_width_steps is not None:
-      self.bin_width_steps = max(int(self.cfg.adaptive_bin_width_steps), 1)
+      adaptive_bin_width_steps = max(int(self.cfg.adaptive_bin_width_steps), 1)
     else:
-      self.bin_width_steps = max(
+      adaptive_bin_width_steps = max(
         int(round(float(self.cfg.adaptive_bin_width_s) / env.step_dt)), 1
       )
-    self.bin_count = int(max_motion_length // self.bin_width_steps) + 1
-    self.motion_bin_counts = torch.clamp(
-      torch.div(
-        self.motion.file_lengths + self.bin_width_steps - 1,
-        self.bin_width_steps,
-        rounding_mode="floor",
+    self.adaptive_sampling = AdaptiveSamplingState(
+      self.motion.file_lengths,
+      AdaptiveSamplingConfig(
+        bin_width_steps=adaptive_bin_width_steps,
+        uniform_ratio=self.cfg.adaptive_uniform_ratio,
+        init_num_failures=self.cfg.adaptive_init_num_failures,
+        failure_rate_window_iterations=(
+          self.cfg.adaptive_failure_rate_window_iterations
+        ),
+        failure_rate_window_chunks=self.cfg.adaptive_failure_rate_window_chunks,
+        failure_rate_max_over_mean=self.cfg.adaptive_failure_rate_max_over_mean,
+        sequence_length_agnostic=self.cfg.adaptive_sequence_length_agnostic,
+        max_prob_per_bin=self.cfg.adaptive_max_prob_per_bin,
+        max_prob_per_motion=self.cfg.adaptive_max_prob_per_motion,
       ),
-      min=1,
     )
-    bin_indices = torch.arange(self.bin_count, device=self.device)
-    self.bin_valid_mask = bin_indices.unsqueeze(0) < self.motion_bin_counts.unsqueeze(1)
-    self.valid_motion_ids, self.valid_bin_ids = torch.where(self.bin_valid_mask)
-    self.num_valid_motion_bins = max(int(self.valid_motion_ids.numel()), 1)
-    bin_starts = bin_indices.unsqueeze(0) * self.bin_width_steps
-    remaining_lengths = (self.motion.file_lengths.unsqueeze(1) - bin_starts).clamp(
-      min=0
-    )
-    self.bin_lengths = torch.minimum(
-      remaining_lengths,
-      torch.full_like(remaining_lengths, self.bin_width_steps),
-    )
-    self.bin_lengths.masked_fill_(~self.bin_valid_mask, 0)
-
-    valid_bin_lengths = self.bin_lengths[self.bin_valid_mask].float()
-    mean_bin_length = torch.clamp(valid_bin_lengths.mean(), min=1.0)
-    self.bin_weights = self.bin_lengths.float() / mean_bin_length
-    if self.cfg.adaptive_sequence_length_agnostic:
-      self.bin_weights = self.bin_weights / self.motion_bin_counts.unsqueeze(1).float()
-    self.bin_weights.masked_fill_(~self.bin_valid_mask, 0.0)
-
-    init_count = float(self.cfg.adaptive_init_num_failures)
-    self.bin_episode_count = torch.full(
-      (self.motion.num_files, self.bin_count),
-      init_count,
-      dtype=torch.float,
-      device=self.device,
-    )
-    self.bin_failure_count = torch.full_like(self.bin_episode_count, init_count)
-    self.bin_episode_count.masked_fill_(~self.bin_valid_mask, 0.0)
-    self.bin_failure_count.masked_fill_(~self.bin_valid_mask, 0.0)
-    self._init_adaptive_sampling_window()
     self._adaptive_sampling_phase = "idle"
     self._skip_current_adaptive_episode_count = torch.zeros(
       self.num_envs, dtype=torch.bool, device=self.device
@@ -215,96 +191,17 @@ class MultiMotionCommand(CommandTerm):
   def _compute_motion_bin_indices(
     self, time_steps: torch.Tensor, motion_indices: torch.Tensor
   ) -> torch.Tensor:
-    raw_bin_indices = torch.div(time_steps, self.bin_width_steps, rounding_mode="floor")
-    max_bin_indices = self.motion_bin_counts[motion_indices] - 1
-    return torch.minimum(raw_bin_indices, max_bin_indices)
+    return self.adaptive_sampling.compute_motion_bin_indices(
+      time_steps, motion_indices
+    )
 
   def _compute_failure_rate(self) -> torch.Tensor:
-    failure_rate = self.bin_failure_count / torch.clamp(
-      self.bin_episode_count, min=1e-12
-    )
-    return failure_rate.masked_fill(~self.bin_valid_mask, 0.0)
-
-  def _init_adaptive_sampling_window(self) -> None:
-    window_iterations = getattr(
-      self.cfg, "adaptive_failure_rate_window_iterations", None
-    )
-    self._adaptive_window_episode_chunks: torch.Tensor | None = None
-    self._adaptive_window_failure_chunks: torch.Tensor | None = None
-    self._adaptive_window_chunk_size = 0
-    self._adaptive_window_current_chunk = 0
-    self._adaptive_window_base_iteration: int | None = None
-    self._adaptive_window_last_logical_chunk = 0
-
-    if window_iterations is None or int(window_iterations) <= 0:
-      return
-
-    window_iterations = max(int(window_iterations), 1)
-    num_chunks = max(
-      int(getattr(self.cfg, "adaptive_failure_rate_window_chunks", 40)), 1
-    )
-    num_chunks = min(num_chunks, window_iterations)
-    self._adaptive_window_chunk_size = max(
-      int(math.ceil(window_iterations / num_chunks)), 1
-    )
-    chunk_shape = (num_chunks, *self.bin_episode_count.shape)
-    self._adaptive_window_episode_chunks = torch.zeros(
-      chunk_shape,
-      dtype=self.bin_episode_count.dtype,
-      device=self.bin_episode_count.device,
-    )
-    self._adaptive_window_failure_chunks = torch.zeros_like(
-      self._adaptive_window_episode_chunks
-    )
-    self._adaptive_window_episode_chunks[0].copy_(self.bin_episode_count)
-    self._adaptive_window_failure_chunks[0].copy_(self.bin_failure_count)
+    return self.adaptive_sampling.failure_rate()
 
   def begin_adaptive_sampling_iteration(self, iteration: int) -> None:
-    if (
-      self.cfg.sampling_mode != "adaptive"
-      or self._adaptive_window_episode_chunks is None
-      or self._adaptive_window_failure_chunks is None
-    ):
+    if self.cfg.sampling_mode != "adaptive":
       return
-
-    if self._adaptive_window_base_iteration is None:
-      self._adaptive_window_base_iteration = int(iteration)
-      return
-
-    chunk_size = max(self._adaptive_window_chunk_size, 1)
-    logical_chunk = max(
-      (int(iteration) - self._adaptive_window_base_iteration) // chunk_size,
-      0,
-    )
-    if logical_chunk <= self._adaptive_window_last_logical_chunk:
-      return
-
-    num_chunks = self._adaptive_window_episode_chunks.shape[0]
-    for next_logical_chunk in range(
-      self._adaptive_window_last_logical_chunk + 1,
-      logical_chunk + 1,
-    ):
-      chunk_index = next_logical_chunk % num_chunks
-      self.bin_episode_count -= self._adaptive_window_episode_chunks[chunk_index]
-      self.bin_failure_count -= self._adaptive_window_failure_chunks[chunk_index]
-      self._adaptive_window_episode_chunks[chunk_index].zero_()
-      self._adaptive_window_failure_chunks[chunk_index].zero_()
-      self._adaptive_window_current_chunk = chunk_index
-
-    self.bin_episode_count.clamp_(min=0.0)
-    self.bin_failure_count.clamp_(min=0.0)
-    self._adaptive_window_last_logical_chunk = logical_chunk
-
-  def _record_adaptive_sampling_window_increments(
-    self, episode_increments: torch.Tensor, failure_increments: torch.Tensor
-  ) -> None:
-    episode_chunks = getattr(self, "_adaptive_window_episode_chunks", None)
-    failure_chunks = getattr(self, "_adaptive_window_failure_chunks", None)
-    if episode_chunks is None or failure_chunks is None:
-      return
-
-    episode_chunks[self._adaptive_window_current_chunk] += episode_increments
-    failure_chunks[self._adaptive_window_current_chunk] += failure_increments
+    self.adaptive_sampling.begin_iteration(iteration)
 
   def _accumulate_adaptive_sampling_stats(
     self,
@@ -312,35 +209,7 @@ class MultiMotionCommand(CommandTerm):
     time_steps: torch.Tensor,
     failure_mask: torch.Tensor | None,
   ) -> None:
-    if motion_ids.numel() == 0:
-      return
-
-    current_bin_indices = self._compute_motion_bin_indices(time_steps, motion_ids)
-    linear_indices = motion_ids * self.bin_count + current_bin_indices
-    current_counts = torch.bincount(
-      linear_indices, minlength=self.motion.num_files * self.bin_count
-    ).view(self.motion.num_files, self.bin_count)
-    episode_increments = current_counts.float() / torch.clamp(
-      self.bin_lengths.float(), min=1.0
-    )
-    self.bin_episode_count += episode_increments
-
-    failure_increments = torch.zeros_like(self.bin_failure_count)
-    if failure_mask is None or not failure_mask.any():
-      self._record_adaptive_sampling_window_increments(
-        episode_increments, failure_increments
-      )
-      return
-
-    failed_linear_indices = linear_indices[failure_mask]
-    failed_counts = torch.bincount(
-      failed_linear_indices, minlength=self.motion.num_files * self.bin_count
-    ).view(self.motion.num_files, self.bin_count)
-    failure_increments = failed_counts.float()
-    self.bin_failure_count += failure_increments
-    self._record_adaptive_sampling_window_increments(
-      episode_increments, failure_increments
-    )
+    self.adaptive_sampling.record(motion_ids, time_steps, failure_mask)
 
   def _stage_pre_resample_adaptive_stats(self, env_ids: torch.Tensor) -> None:
     if self.cfg.sampling_mode != "adaptive" or env_ids.numel() == 0:
@@ -370,20 +239,6 @@ class MultiMotionCommand(CommandTerm):
       self.time_steps[active_env_ids],
       failure_mask=None,
     )
-
-  def _resolve_probability_cap(
-    self, value: float | Literal["auto"] | None, count: int
-  ) -> float | None:
-    if value is None:
-      return None
-    if value == "auto":
-      if count <= 0:
-        return 1.0
-      return float(self.cfg.adaptive_failure_rate_max_over_mean) / float(count)
-    resolved = float(value)
-    if resolved <= 0.0:
-      return None
-    return resolved
 
   def _clamp_motion_time_steps(
     self, motion_ids: torch.Tensor, time_steps: torch.Tensor
@@ -415,88 +270,64 @@ class MultiMotionCommand(CommandTerm):
     offset_tensor = torch.tensor(offsets, device=self.device, dtype=torch.long)
     return self.time_steps.unsqueeze(1) + offset_tensor.unsqueeze(0)
 
-  def _apply_max_probability_constraints(
-    self,
-    probabilities: torch.Tensor,
-    valid_motion_ids: torch.Tensor,
-    num_motions: int,
-  ) -> torch.Tensor:
-    constrained = probabilities
-    max_prob_per_bin = self._resolve_probability_cap(
-      self.cfg.adaptive_max_prob_per_bin, len(probabilities)
-    )
-    if max_prob_per_bin is not None and len(probabilities) > 1.0 / max_prob_per_bin:
-      constrained = torch.clamp(constrained, max=max_prob_per_bin)
-      constrained = constrained / torch.clamp(constrained.sum(), min=1e-12)
-
-    max_prob_per_motion = self._resolve_probability_cap(
-      self.cfg.adaptive_max_prob_per_motion, num_motions
-    )
-    if max_prob_per_motion is not None and num_motions > 1.0 / max_prob_per_motion:
-      motion_probabilities = torch.zeros(
-        self.motion.num_files, dtype=constrained.dtype, device=self.device
-      )
-      motion_probabilities.scatter_add_(0, valid_motion_ids, constrained)
-      motion_scale = torch.ones_like(motion_probabilities)
-      oversized = motion_probabilities > max_prob_per_motion
-      motion_scale[oversized] = max_prob_per_motion / torch.clamp(
-        motion_probabilities[oversized], min=1e-12
-      )
-      constrained = constrained * motion_scale[valid_motion_ids]
-      constrained = constrained / torch.clamp(constrained.sum(), min=1e-12)
-
-    return constrained
-
   def _compute_pair_sampling_probabilities(
     self,
     valid_motion_ids: torch.Tensor,
     valid_bin_ids: torch.Tensor,
     num_motions: int,
   ) -> tuple[torch.Tensor, torch.Tensor]:
-    failure_rate = self._compute_failure_rate()
-    valid_failure_rate = failure_rate[valid_motion_ids, valid_bin_ids]
-    failure_rate_mean = valid_failure_rate.mean()
-    failure_rate_upper_bound = failure_rate_mean * float(
-      self.cfg.adaptive_failure_rate_max_over_mean
+    return self.adaptive_sampling.sampling_probabilities(
+      valid_motion_ids, valid_bin_ids, num_motions
     )
-    clipped_failure_rate = torch.clamp(
-      valid_failure_rate, 0.0, failure_rate_upper_bound
-    )
-
-    clipped_sum = clipped_failure_rate.sum()
-    if clipped_sum <= 0.0:
-      failure_based_probabilities = torch.full(
-        (len(valid_motion_ids),),
-        1.0 / float(max(len(valid_motion_ids), 1)),
-        dtype=torch.float,
-        device=self.device,
-      )
-    else:
-      failure_based_probabilities = clipped_failure_rate / clipped_sum
-
-    uniform_probabilities = torch.full_like(
-      failure_based_probabilities, 1.0 / float(max(len(valid_motion_ids), 1))
-    )
-    uniform_ratio = float(max(0.0, min(1.0, self.cfg.adaptive_uniform_ratio)))
-    probabilities = (
-      1.0 - uniform_ratio
-    ) * failure_based_probabilities + uniform_ratio * uniform_probabilities
-    probabilities = probabilities * self.bin_weights[valid_motion_ids, valid_bin_ids]
-    probabilities = probabilities / torch.clamp(probabilities.sum(), min=1e-12)
-    probabilities = self._apply_max_probability_constraints(
-      probabilities, valid_motion_ids, num_motions
-    )
-    return probabilities, valid_failure_rate
 
   def _uniform_baseline_probabilities(
     self, motion_indices: torch.Tensor
   ) -> torch.Tensor:
-    return torch.full(
-      (len(motion_indices),),
-      1.0 / float(self.num_valid_motion_bins),
-      dtype=torch.float,
-      device=self.device,
-    )
+    return self.adaptive_sampling.uniform_baseline_probabilities(motion_indices)
+
+  @property
+  def bin_width_steps(self) -> int:
+    return self.adaptive_sampling.bin_width_steps
+
+  @property
+  def bin_count(self) -> int:
+    return self.adaptive_sampling.bin_count
+
+  @property
+  def motion_bin_counts(self) -> torch.Tensor:
+    return self.adaptive_sampling.motion_bin_counts
+
+  @property
+  def bin_valid_mask(self) -> torch.Tensor:
+    return self.adaptive_sampling.bin_valid_mask
+
+  @property
+  def valid_motion_ids(self) -> torch.Tensor:
+    return self.adaptive_sampling.valid_motion_ids
+
+  @property
+  def valid_bin_ids(self) -> torch.Tensor:
+    return self.adaptive_sampling.valid_bin_ids
+
+  @property
+  def num_valid_motion_bins(self) -> int:
+    return self.adaptive_sampling.num_valid_motion_bins
+
+  @property
+  def bin_lengths(self) -> torch.Tensor:
+    return self.adaptive_sampling.bin_lengths
+
+  @property
+  def bin_weights(self) -> torch.Tensor:
+    return self.adaptive_sampling.bin_weights
+
+  @property
+  def bin_episode_count(self) -> torch.Tensor:
+    return self.adaptive_sampling.bin_episode_count
+
+  @property
+  def bin_failure_count(self) -> torch.Tensor:
+    return self.adaptive_sampling.bin_failure_count
 
   @property
   def command(self) -> torch.Tensor:

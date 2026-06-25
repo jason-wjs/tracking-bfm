@@ -25,8 +25,7 @@ tracking_bfm = "tracking_bfm"
 tracking-bfm-train = "tracking_bfm.scripts.train:main"
 tracking-bfm-play = "tracking_bfm.scripts.play:main"
 tracking-bfm-evaluate = "tracking_bfm.scripts.evaluate:main"
-tracking-bfm-export-onnx = "tracking_bfm.scripts.export_onnx:main"
-tracking-bfm-export-latent-onnx = "tracking_bfm.scripts.export_latent_onnx:main"
+tracking-bfm-export = "tracking_bfm.scripts.export:main"
 tracking-bfm-filter-motions = "tracking_bfm.scripts.data_process.filter_motions:main"
 tracking-bfm-generate-motion-dataset = "tracking_bfm.scripts.data_process.generate_motion_dataset:main"
 tracking-bfm-delete-failed-motions = "tracking_bfm.scripts.data_process.delete_failed_motions:main"
@@ -87,8 +86,8 @@ addopts = "--strict-markers"
 [tool.pyright]
 include = [
   "src/tracking_bfm/motion_source.py",
-  "src/tracking_bfm/tasks/registry.py",
   "src/tracking_bfm/export/__init__.py",
+  "src/tracking_bfm/scripts/export.py",
   "tests/test_motion_source.py",
   "tests/test_entry_points.py",
   "tests/test_project_structure.py",

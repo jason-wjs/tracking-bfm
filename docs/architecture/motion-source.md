@@ -66,10 +66,11 @@ Start with low-risk call sites where behavior is already isolated:
    W&B run motion artifacts.
 
 Implementation status: this batch is implemented by
-`tracking_bfm.motion_source`. Workflow adapters may keep temporary compatibility
-wrappers, but source mutual exclusion, W&B artifact resolution, command source
-shape handling, play-time command application, directory collection, and
-deterministic sharding should live in that Module.
+`tracking_bfm.motion_source`. Source mutual exclusion, W&B artifact resolution,
+command source shape handling, play-time command application, directory
+collection, and deterministic sharding live in that Module. Export startup is
+served by the unified `tracking-bfm-export policy|latent` CLI, while export
+domain logic remains in `tracking_bfm.export`.
 
 ## Deferred Work
 

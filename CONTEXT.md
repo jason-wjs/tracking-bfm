@@ -29,9 +29,9 @@ and evaluation workflows. Primary IDs use `BFM` casing.
 
 **Legacy task alias**
 
-A Legacy task alias is an older task identifier kept so previous scripts,
-checkpoints, and W&B configs can still resolve to the new package. New
-references should prefer primary task IDs.
+A Legacy task alias is an older task identifier recorded in migration docs so
+old fork checkpoints can be understood. Legacy task aliases are not registered by the current mainline;
+old checkpoints that require them belong on the archived fork.
 
 **Motion source**
 
@@ -76,12 +76,14 @@ latent distillation.
 **Latent velocity task**
 
 A Latent velocity task uses latent representations for velocity-oriented
-control. `LatentRL` is retained as a legacy task alias for this task family.
+control.
 
 **ONNX export workflow**
 
 An ONNX export workflow loads a policy checkpoint and task config, applies an
-optional Motion source override, and writes an exported policy artifact.
+optional Motion source override, and writes an exported policy artifact. The
+canonical CLI entrypoint is `tracking-bfm-export` with `policy` and `latent`
+subcommands.
 
 **Data processing workflow**
 

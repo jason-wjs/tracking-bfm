@@ -12,6 +12,17 @@ from mjlab.tasks.registry import list_tasks, load_env_cfg  # noqa: E402
 
 import tracking_bfm  # noqa: E402, F401
 
+PRIMARY_LATENT_IDS = (
+  "Mjlab-LatentTrackingBFM-Flat-Unitree-G1-1Stage",
+  "Mjlab-LatentVelocityBFM-Flat-Unitree-G1",
+  "Mjlab-LatentVelocityBFM-Rough-Unitree-G1",
+)
+REMOVED_LATENT_LEGACY_ALIASES = {
+  "Mjlab-LatentTrackingbfm-Flat-Unitree-G1-1Stage",
+  "Mjlab-LatentRL-Flat-Unitree-G1",
+  "Mjlab-LatentRL-Rough-Unitree-G1",
+}
+
 
 def _reward(weight: float = 0.0, params: dict | None = None):
   return SimpleNamespace(weight=weight, params={} if params is None else dict(params))
@@ -156,7 +167,7 @@ def test_latent_decoder_helpers_validate_checkpoint_shapes_and_cfg(tmp_path):
     )
 
 
-def test_latent_registration_uses_primary_ids_and_legacy_aliases(monkeypatch):
+def test_latent_registration_uses_primary_ids(monkeypatch):
   from tracking_bfm.tasks.latent_tracking.config.g1 import (
     register_tasks as register_latent_tracking_tasks,
   )
@@ -166,11 +177,11 @@ def test_latent_registration_uses_primary_ids_and_legacy_aliases(monkeypatch):
 
   calls = []
   monkeypatch.setattr(
-    "tracking_bfm.tasks.latent_tracking.config.g1.register_task_with_aliases",
+    "tracking_bfm.tasks.latent_tracking.config.g1.register_mjlab_task",
     lambda **kwargs: calls.append(kwargs),
   )
   monkeypatch.setattr(
-    "tracking_bfm.tasks.latent_velocity.config.g1.register_task_with_aliases",
+    "tracking_bfm.tasks.latent_velocity.config.g1.register_mjlab_task",
     lambda **kwargs: calls.append(kwargs),
   )
   monkeypatch.setattr(
@@ -190,24 +201,18 @@ def test_latent_registration_uses_primary_ids_and_legacy_aliases(monkeypatch):
   register_latent_tracking_tasks()
   register_latent_velocity_tasks()
 
-  assert [call["primary_id"] for call in calls] == [
-    "Mjlab-LatentTrackingBFM-Flat-Unitree-G1-1Stage",
-    "Mjlab-LatentVelocityBFM-Flat-Unitree-G1",
-    "Mjlab-LatentVelocityBFM-Rough-Unitree-G1",
-  ]
-  assert calls[0]["aliases"] == ("Mjlab-LatentTrackingbfm-Flat-Unitree-G1-1Stage",)
-  assert calls[1]["aliases"] == ("Mjlab-LatentRL-Flat-Unitree-G1",)
-  assert calls[2]["aliases"] == ("Mjlab-LatentRL-Rough-Unitree-G1",)
+  assert [call["task_id"] for call in calls] == list(PRIMARY_LATENT_IDS)
+  assert all("aliases" not in call for call in calls)
   assert calls[0]["runner_cls"].__name__ == "LatentTrackingOnPolicyRunner"
   assert calls[1]["runner_cls"].__name__ == "LatentVelocityOnPolicyRunner"
   assert calls[2]["runner_cls"].__name__ == "LatentVelocityOnPolicyRunner"
 
 
-def test_rough_latent_velocity_task_is_registered_with_legacy_alias() -> None:
+def test_latent_tasks_are_registered_without_legacy_aliases() -> None:
   task_ids = set(list_tasks())
 
-  assert "Mjlab-LatentVelocityBFM-Rough-Unitree-G1" in task_ids
-  assert "Mjlab-LatentRL-Rough-Unitree-G1" in task_ids
+  assert set(PRIMARY_LATENT_IDS).issubset(task_ids)
+  assert REMOVED_LATENT_LEGACY_ALIASES.isdisjoint(task_ids)
 
   cfg = load_env_cfg("Mjlab-LatentVelocityBFM-Rough-Unitree-G1")
 

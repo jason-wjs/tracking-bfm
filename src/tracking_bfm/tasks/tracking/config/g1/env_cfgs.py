@@ -8,6 +8,7 @@ from mjlab.asset_zoo.robots import (
   get_g1_robot_cfg,
 )
 from mjlab.envs import ManagerBasedRlEnvCfg
+from mjlab.envs import mdp as env_mdp
 from mjlab.envs.mdp import dr
 from mjlab.envs.mdp.actions import JointPositionActionCfg
 from mjlab.managers.event_manager import EventTermCfg
@@ -17,7 +18,7 @@ from mjlab.sensor import ContactMatch, ContactSensorCfg
 from mjlab.utils.noise import UniformNoiseCfg as Unoise
 
 from tracking_bfm.tasks.distillation.mdp import commands as distill_commands
-from tracking_bfm.tasks.tracking import mdp
+from tracking_bfm.tasks.tracking import mdp as bfm_mdp
 from tracking_bfm.tasks.tracking.mdp import MotionCommandCfg as SingleMotionCommandCfg
 from tracking_bfm.tasks.tracking.mdp.multi_motion_command import (
   MotionCommandCfg as MultiMotionCommandCfg,
@@ -90,29 +91,29 @@ def _unitree_g1_sparse_actor_cfg(
         },
       ),
       "projected_gravity": ObservationTermCfg(
-        func=mdp.projected_gravity,
+        func=env_mdp.projected_gravity,
         noise=Unoise(n_min=-0.05, n_max=0.05),
         history_length=robot_history_length,
       ),
       "base_ang_vel": ObservationTermCfg(
-        func=mdp.builtin_sensor,
+        func=env_mdp.builtin_sensor,
         params={"sensor_name": "robot/imu_ang_vel"},
         noise=Unoise(n_min=-0.2, n_max=0.2),
         history_length=robot_history_length,
       ),
       "joint_pos": ObservationTermCfg(
-        func=mdp.joint_pos_rel,
+        func=env_mdp.joint_pos_rel,
         params={"biased": True},
         noise=Unoise(n_min=-0.01, n_max=0.01),
         history_length=robot_history_length,
       ),
       "joint_vel": ObservationTermCfg(
-        func=mdp.joint_vel_rel,
+        func=env_mdp.joint_vel_rel,
         noise=Unoise(n_min=-0.5, n_max=0.5),
         history_length=robot_history_length,
       ),
       "actions": ObservationTermCfg(
-        func=mdp.last_action,
+        func=env_mdp.last_action,
         history_length=robot_history_length,
       ),
     },
@@ -158,8 +159,10 @@ def _use_full_critic_actor_observations(cfg: ManagerBasedRlEnvCfg) -> None:
 
 
 def _use_global_body_pose_rewards(cfg: ManagerBasedRlEnvCfg) -> None:
-  cfg.rewards["motion_body_pos"].func = mdp.motion_global_body_position_error_exp
-  cfg.rewards["motion_body_ori"].func = mdp.motion_global_body_orientation_error_exp
+  cfg.rewards["motion_body_pos"].func = bfm_mdp.motion_global_body_position_error_exp
+  cfg.rewards["motion_body_ori"].func = (
+    bfm_mdp.motion_global_body_orientation_error_exp
+  )
 
 
 def _disable_tracking_regularization_rewards(cfg: ManagerBasedRlEnvCfg) -> None:

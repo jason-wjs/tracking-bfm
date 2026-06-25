@@ -15,6 +15,13 @@ import wandb
 from mjlab.envs import ManagerBasedRlEnv
 from mjlab.rl import MjlabOnPolicyRunner, RslRlVecEnvWrapper
 from mjlab.tasks.registry import list_tasks, load_env_cfg, load_rl_cfg, load_runner_cls
+from mjlab.tasks.tracking.mdp.metrics import (
+  compute_ee_orientation_error,
+  compute_ee_position_error,
+  compute_joint_velocity_error,
+  compute_mpkpe,
+  compute_root_relative_mpkpe,
+)
 from mjlab.utils.os import get_wandb_checkpoint_path
 from mjlab.utils.torch import configure_torch_backends
 
@@ -26,13 +33,6 @@ from tracking_bfm.motion_source import (
 )
 from tracking_bfm.scripts.cli_helpers import maybe_print_top_level_help
 from tracking_bfm.tasks.tracking.mdp.commands import MotionCommand
-from tracking_bfm.tasks.tracking.mdp.metrics import (
-  compute_ee_orientation_error,
-  compute_ee_position_error,
-  compute_joint_velocity_error,
-  compute_mpkpe,
-  compute_root_relative_mpkpe,
-)
 
 
 @dataclass(frozen=True)

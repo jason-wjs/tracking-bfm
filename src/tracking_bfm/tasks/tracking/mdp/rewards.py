@@ -1,8 +1,4 @@
-"""Tracking reward terms.
-
-Common tracking rewards are re-exported from upstream ``mjlab``. This module
-only implements BFM-specific reward additions.
-"""
+"""BFM-specific tracking reward terms."""
 
 from __future__ import annotations
 
@@ -10,15 +6,6 @@ from typing import TYPE_CHECKING, cast
 
 import torch
 from mjlab.managers.scene_entity_config import SceneEntityCfg
-from mjlab.tasks.tracking.mdp.rewards import (
-  motion_global_anchor_orientation_error_exp,
-  motion_global_anchor_position_error_exp,
-  motion_global_body_angular_velocity_error_exp,
-  motion_global_body_linear_velocity_error_exp,
-  motion_relative_body_orientation_error_exp,
-  motion_relative_body_position_error_exp,
-  self_collision_cost,
-)
 from mjlab.utils.lab_api.math import quat_error_magnitude, subtract_frame_transforms
 
 from .commands import MotionCommand
@@ -197,13 +184,6 @@ def joint_action_rate_l2(
 
 
 __all__ = [
-  "motion_global_anchor_position_error_exp",
-  "motion_global_anchor_orientation_error_exp",
-  "motion_relative_body_position_error_exp",
-  "motion_relative_body_orientation_error_exp",
-  "motion_global_body_linear_velocity_error_exp",
-  "motion_global_body_angular_velocity_error_exp",
-  "self_collision_cost",
   "motion_global_body_position_error_exp",
   "motion_global_body_orientation_error_exp",
   "motion_pelvis_limb_ee_position_error_exp",

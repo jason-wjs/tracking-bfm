@@ -1,9 +1,8 @@
 from __future__ import annotations
 
+from mjlab.envs import mdp as env_mdp
 from mjlab.managers.observation_manager import ObservationTermCfg
 from mjlab.utils.noise import UniformNoiseCfg as Unoise
-
-from tracking_bfm.tasks.tracking import mdp
 
 from . import commands as distill_commands
 
@@ -81,29 +80,29 @@ def build_student_actor_terms(
       },
     ),
     "projected_gravity": ObservationTermCfg(
-      func=mdp.projected_gravity,
+      func=env_mdp.projected_gravity,
       noise=Unoise(n_min=-0.05, n_max=0.05),
       history_length=robot_history_length,
     ),
     "base_ang_vel": ObservationTermCfg(
-      func=mdp.builtin_sensor,
+      func=env_mdp.builtin_sensor,
       params={"sensor_name": "robot/imu_ang_vel"},
       noise=Unoise(n_min=-0.2, n_max=0.2),
       history_length=robot_history_length,
     ),
     "joint_pos": ObservationTermCfg(
-      func=mdp.joint_pos_rel,
+      func=env_mdp.joint_pos_rel,
       params={"biased": True},
       noise=Unoise(n_min=-0.01, n_max=0.01),
       history_length=robot_history_length,
     ),
     "joint_vel": ObservationTermCfg(
-      func=mdp.joint_vel_rel,
+      func=env_mdp.joint_vel_rel,
       noise=Unoise(n_min=-0.5, n_max=0.5),
       history_length=robot_history_length,
     ),
     "actions": ObservationTermCfg(
-      func=mdp.last_action,
+      func=env_mdp.last_action,
       history_length=robot_history_length,
     ),
   }
@@ -114,29 +113,29 @@ def build_proprio_actor_terms(history_steps: int = 0) -> dict[str, ObservationTe
   robot_history_length = _robot_state_history_length(history_steps)
   return {
     "projected_gravity": ObservationTermCfg(
-      func=mdp.projected_gravity,
+      func=env_mdp.projected_gravity,
       noise=Unoise(n_min=-0.05, n_max=0.05),
       history_length=robot_history_length,
     ),
     "base_ang_vel": ObservationTermCfg(
-      func=mdp.builtin_sensor,
+      func=env_mdp.builtin_sensor,
       params={"sensor_name": "robot/imu_ang_vel"},
       noise=Unoise(n_min=-0.2, n_max=0.2),
       history_length=robot_history_length,
     ),
     "joint_pos": ObservationTermCfg(
-      func=mdp.joint_pos_rel,
+      func=env_mdp.joint_pos_rel,
       params={"biased": True},
       noise=Unoise(n_min=-0.01, n_max=0.01),
       history_length=robot_history_length,
     ),
     "joint_vel": ObservationTermCfg(
-      func=mdp.joint_vel_rel,
+      func=env_mdp.joint_vel_rel,
       noise=Unoise(n_min=-0.5, n_max=0.5),
       history_length=robot_history_length,
     ),
     "actions": ObservationTermCfg(
-      func=mdp.last_action,
+      func=env_mdp.last_action,
       history_length=robot_history_length,
     ),
   }

@@ -23,10 +23,12 @@ from tracking_bfm.export.onnx_policy import (
   export_actor_model_to_onnx,
   resolve_policy_onnx_path,
 )
-from tracking_bfm.scripts.export_latent_onnx import (
-  parse_args as parse_latent_export_args,
-)
-from tracking_bfm.scripts.export_onnx import parse_args as parse_policy_export_args
+
+
+def parse_export_args(argv: list[str]):
+  from tracking_bfm.scripts.export import parse_args
+
+  return parse_args(argv)
 
 
 def test_export_package_public_names_are_resolvable() -> None:
@@ -199,33 +201,164 @@ def test_metadata_helpers_return_minimal_string_metadata() -> None:
   assert all(isinstance(value, str) for value in latent_metadata.values())
 
 
-def test_export_onnx_cli_parses_overwrite_flag() -> None:
-  args = parse_policy_export_args(
+def test_export_policy_cli_parses_full_argument_surface() -> None:
+  args = parse_export_args(
     [
+      "policy",
       "--checkpoint",
       "/tmp/model.pt",
       "--task-id",
       "Mjlab-TrackingBFM-Flat-Unitree-G1",
+      "--checkpoint-family",
+      "distillation",
+      "--obs-group",
+      "student",
+      "--motion-path",
+      "/tmp/motions",
+      "--motion-file",
+      "/tmp/motion.npz",
+      "--student-history-steps",
+      "2",
+      "--student-future-steps",
+      "3",
+      "--student-robot-history-steps",
+      "4",
+      "--output-name",
+      "policy.onnx",
+      "--robot-name",
+      "g1",
+      "--device",
+      "cuda:0",
       "--overwrite",
+      "--verbose",
     ]
   )
 
+  assert args.mode == "policy"
   assert args.checkpoint == "/tmp/model.pt"
+  assert args.task_id == "Mjlab-TrackingBFM-Flat-Unitree-G1"
+  assert args.checkpoint_family == "distillation"
+  assert args.obs_group == "student"
+  assert args.motion_path == "/tmp/motions"
+  assert args.motion_file == "/tmp/motion.npz"
+  assert args.student_history_steps == 2
+  assert args.student_future_steps == 3
+  assert args.student_robot_history_steps == 4
+  assert args.output_name == "policy.onnx"
+  assert args.robot_name == "g1"
+  assert args.device == "cuda:0"
   assert args.overwrite is True
+  assert args.verbose is True
 
 
-def test_export_latent_onnx_cli_parses_overwrite_flag() -> None:
-  args = parse_latent_export_args(
+def test_export_policy_cli_defaults_match_old_policy_cli() -> None:
+  args = parse_export_args(
     [
+      "policy",
+      "--checkpoint",
+      "/tmp/model.pt",
+      "--task-id",
+      "Mjlab-TrackingBFM-Flat-Unitree-G1",
+    ]
+  )
+
+  assert args.checkpoint_family == "auto"
+  assert args.obs_group is None
+  assert args.motion_path is None
+  assert args.motion_file is None
+  assert args.student_history_steps is None
+  assert args.student_future_steps is None
+  assert args.student_robot_history_steps is None
+  assert args.output_name is None
+  assert args.robot_name is None
+  assert args.device == "cpu"
+  assert args.overwrite is False
+  assert args.verbose is False
+
+
+def test_export_latent_cli_parses_full_argument_surface() -> None:
+  args = parse_export_args(
+    [
+      "latent",
       "--checkpoint",
       "/tmp/model.pt",
       "--decoder-checkpoint",
       "/tmp/decoder.pt",
       "--task-id",
       "Mjlab-LatentTrackingBFM-Flat-Unitree-G1-1Stage",
+      "--obs-group",
+      "latent_actor",
+      "--proprio-obs-group",
+      "robot_state",
+      "--motion-path",
+      "/tmp/motions",
+      "--motion-file",
+      "/tmp/motion.npz",
+      "--latent-action-clip",
+      "0.7",
+      "--output-name",
+      "latent.onnx",
+      "--robot-name",
+      "g1",
+      "--device",
+      "cuda:1",
       "--overwrite",
+      "--verbose",
     ]
   )
 
+  assert args.mode == "latent"
+  assert args.checkpoint == "/tmp/model.pt"
   assert args.decoder_checkpoint == "/tmp/decoder.pt"
+  assert args.task_id == "Mjlab-LatentTrackingBFM-Flat-Unitree-G1-1Stage"
+  assert args.obs_group == "latent_actor"
+  assert args.proprio_obs_group == "robot_state"
+  assert args.motion_path == "/tmp/motions"
+  assert args.motion_file == "/tmp/motion.npz"
+  assert args.latent_action_clip == 0.7
+  assert args.output_name == "latent.onnx"
+  assert args.robot_name == "g1"
+  assert args.device == "cuda:1"
   assert args.overwrite is True
+  assert args.verbose is True
+
+
+def test_export_latent_cli_defaults_match_old_latent_cli() -> None:
+  args = parse_export_args(
+    [
+      "latent",
+      "--checkpoint",
+      "/tmp/model.pt",
+      "--decoder-checkpoint",
+      "/tmp/decoder.pt",
+      "--task-id",
+      "Mjlab-LatentTrackingBFM-Flat-Unitree-G1-1Stage",
+    ]
+  )
+
+  assert args.obs_group == "actor"
+  assert args.proprio_obs_group == "proprio_actor"
+  assert args.motion_path is None
+  assert args.motion_file is None
+  assert args.latent_action_clip is None
+  assert args.output_name is None
+  assert args.robot_name is None
+  assert args.device == "cpu"
+  assert args.overwrite is False
+  assert args.verbose is False
+
+
+@pytest.mark.parametrize(
+  "argv",
+  [
+    [],
+    ["policy", "--checkpoint", "/tmp/model.pt"],
+    ["policy", "--task-id", "task"],
+    ["latent", "--decoder-checkpoint", "/tmp/decoder.pt", "--task-id", "task"],
+    ["latent", "--checkpoint", "/tmp/model.pt", "--decoder-checkpoint", "/tmp/decoder.pt"],
+    ["latent", "--checkpoint", "/tmp/model.pt", "--task-id", "task"],
+  ],
+)
+def test_export_cli_rejects_missing_required_args(argv: list[str]) -> None:
+  with pytest.raises(SystemExit):
+    parse_export_args(argv)

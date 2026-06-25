@@ -4,6 +4,7 @@ import ast
 import importlib
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -15,7 +16,7 @@ ROOT_QUICK_SCRIPTS = {
   "train.sh": "tracking-bfm-train",
   "play.sh": "tracking-bfm-play",
   "evaluate.sh": "tracking-bfm-evaluate",
-  "export.sh": "tracking-bfm-export-onnx",
+  "export.sh": "tracking-bfm-export",
   "data_process.sh": "tracking-bfm-filter-motions",
   "diagnostics.sh": "tracking-bfm-inspect-checkpoint",
 }
@@ -100,6 +101,108 @@ def test_root_quick_scripts_document_workflow_usage() -> None:
     "./scripts/diagnostics.sh",
   ):
     assert command in project_readme
+
+
+def test_export_script_routes_modes_to_canonical_cli() -> None:
+  text = (ROOT / "scripts" / "export.sh").read_text()
+
+  assert 'MODE="${MODE:-policy}"' in text
+  assert "uv run tracking-bfm-export policy" in text
+  assert "uv run tracking-bfm-export latent" in text
+  assert "Use MODE=policy or MODE=latent" in text
+
+
+def _fake_uv_capture(tmp_path: Path) -> tuple[Path, Path]:
+  argv_path = tmp_path / "argv.json"
+  fake_uv = tmp_path / "uv"
+  fake_uv.write_text(
+    "\n".join(
+      [
+        "#!/usr/bin/env python3",
+        "import json",
+        "import os",
+        "import sys",
+        "with open(os.environ['UV_ARGV_OUT'], 'w', encoding='utf-8') as f:",
+        "  json.dump(sys.argv[1:], f)",
+      ]
+    )
+  )
+  fake_uv.chmod(0o755)
+  return fake_uv, argv_path
+
+
+def test_export_script_builds_policy_argv_with_forwarded_args(tmp_path: Path) -> None:
+  _, argv_path = _fake_uv_capture(tmp_path)
+  env = {
+    **os.environ,
+    "PATH": f"{tmp_path}{os.pathsep}{os.environ['PATH']}",
+    "UV_ARGV_OUT": str(argv_path),
+    "MODE": "policy",
+    "TASK": "Task With Spaces",
+    "CHECKPOINT": "/tmp/model with space.pt",
+    "MOTION_PATH": "/tmp/motion dir",
+    "OUTPUT_NAME": "policy file.onnx",
+    "OVERWRITE": "true",
+    "VERBOSE": "1",
+  }
+
+  subprocess.run(
+    [str(ROOT / "scripts" / "export.sh"), "--extra", "value with spaces"],
+    cwd=ROOT,
+    env=env,
+    check=True,
+  )
+
+  assert json.loads(argv_path.read_text()) == [
+    "run",
+    "tracking-bfm-export",
+    "policy",
+    "--task-id",
+    "Task With Spaces",
+    "--checkpoint",
+    "/tmp/model with space.pt",
+    "--motion-path",
+    "/tmp/motion dir",
+    "--output-name",
+    "policy file.onnx",
+    "--overwrite",
+    "--verbose",
+    "--extra",
+    "value with spaces",
+  ]
+
+
+def test_export_script_builds_latent_argv(tmp_path: Path) -> None:
+  _, argv_path = _fake_uv_capture(tmp_path)
+  env = {
+    **os.environ,
+    "PATH": f"{tmp_path}{os.pathsep}{os.environ['PATH']}",
+    "UV_ARGV_OUT": str(argv_path),
+    "MODE": "latent",
+    "TASK": "Latent Task",
+    "CHECKPOINT": "/tmp/actor.pt",
+    "DECODER_CHECKPOINT": "/tmp/decoder.pt",
+    "LATENT_ACTION_CLIP": "0.5",
+    "DEVICE": "cuda:0",
+  }
+
+  subprocess.run([str(ROOT / "scripts" / "export.sh")], cwd=ROOT, env=env, check=True)
+
+  assert json.loads(argv_path.read_text()) == [
+    "run",
+    "tracking-bfm-export",
+    "latent",
+    "--task-id",
+    "Latent Task",
+    "--checkpoint",
+    "/tmp/actor.pt",
+    "--decoder-checkpoint",
+    "/tmp/decoder.pt",
+    "--latent-action-clip",
+    "0.5",
+    "--device",
+    "cuda:0",
+  ]
 
 
 def test_script_modules_importable() -> None:

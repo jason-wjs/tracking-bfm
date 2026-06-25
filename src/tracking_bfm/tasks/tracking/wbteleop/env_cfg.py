@@ -5,11 +5,12 @@ from __future__ import annotations
 from copy import deepcopy
 
 from mjlab.envs import ManagerBasedRlEnvCfg
+from mjlab.envs import mdp as env_mdp
 from mjlab.managers.observation_manager import ObservationGroupCfg, ObservationTermCfg
 from mjlab.managers.reward_manager import RewardTermCfg
 from mjlab.utils.noise import UniformNoiseCfg as Unoise
 
-from tracking_bfm.tasks.tracking import mdp
+from tracking_bfm.tasks.tracking import mdp as bfm_mdp
 from tracking_bfm.tasks.tracking.config.g1.env_cfgs import (
   unitree_g1_flat_tracking_bfm_env_cfg,
 )
@@ -50,7 +51,7 @@ def wbteleop_actor_cfg(
   return ObservationGroupCfg(
     terms={
       "command": ObservationTermCfg(
-        func=mdp.generated_commands,
+        func=env_mdp.generated_commands,
         params={"command_name": "motion"},
       ),
       "ref_limb_ee_pose_b": ObservationTermCfg(
@@ -78,29 +79,29 @@ def wbteleop_actor_cfg(
         **robot_history,
       ),
       "projected_gravity": ObservationTermCfg(
-        func=mdp.projected_gravity,
+        func=env_mdp.projected_gravity,
         noise=Unoise(n_min=-0.05, n_max=0.05),
         **robot_history,
       ),
       "base_ang_vel": ObservationTermCfg(
-        func=mdp.builtin_sensor,
+        func=env_mdp.builtin_sensor,
         params={"sensor_name": "robot/imu_ang_vel"},
         noise=Unoise(n_min=-0.2, n_max=0.2),
         **robot_history,
       ),
       "joint_pos": ObservationTermCfg(
-        func=mdp.joint_pos_rel,
+        func=env_mdp.joint_pos_rel,
         params={"biased": True},
         noise=Unoise(n_min=-0.01, n_max=0.01),
         **robot_history,
       ),
       "joint_vel": ObservationTermCfg(
-        func=mdp.joint_vel_rel,
+        func=env_mdp.joint_vel_rel,
         noise=Unoise(n_min=-0.5, n_max=0.5),
         **robot_history,
       ),
       "actions": ObservationTermCfg(
-        func=mdp.last_action,
+        func=env_mdp.last_action,
         **robot_history,
       ),
     },
@@ -132,7 +133,7 @@ def unitree_g1_flat_tracking_bfm_wbteleop_env_cfg(
     enable_corruption=not play,
   )
   cfg.rewards["pelvis_limb_ee_pos"] = RewardTermCfg(
-    func=mdp.motion_pelvis_limb_ee_position_error_exp,
+    func=bfm_mdp.motion_pelvis_limb_ee_position_error_exp,
     weight=0.5,
     params={
       "command_name": "motion",
@@ -142,7 +143,7 @@ def unitree_g1_flat_tracking_bfm_wbteleop_env_cfg(
     },
   )
   cfg.rewards["pelvis_limb_ee_ori"] = RewardTermCfg(
-    func=mdp.motion_pelvis_limb_ee_orientation_error_exp,
+    func=bfm_mdp.motion_pelvis_limb_ee_orientation_error_exp,
     weight=0.5,
     params={
       "command_name": "motion",

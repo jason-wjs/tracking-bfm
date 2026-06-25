@@ -221,48 +221,10 @@ class WbTeleopTrackingRunner(MotionTrackingOnPolicyRunner):
       map_location=str(self.device),
       weights_only=False,
     )
-    if "model_state_dict" in checkpoint:
-      checkpoint = self._migrate_legacy_checkpoint(checkpoint["model_state_dict"])
     state_dict = checkpoint.get(component_key)
     if state_dict is None:
       raise KeyError(f"{component_key} not found in checkpoint: {checkpoint_path}")
-    if component_key == "actor_state_dict":
-      self._migrate_actor_distribution_keys(state_dict)
     return state_dict
-
-  @staticmethod
-  def _migrate_legacy_checkpoint(
-    model_state_dict: dict[str, torch.Tensor],
-  ) -> dict[str, dict[str, torch.Tensor]]:
-    actor_state_dict: dict[str, torch.Tensor] = {}
-    critic_state_dict: dict[str, torch.Tensor] = {}
-    for key, value in model_state_dict.items():
-      if key.startswith("actor."):
-        actor_state_dict[key.replace("actor.", "mlp.")] = value
-      elif key.startswith("actor_obs_normalizer."):
-        actor_state_dict[key.replace("actor_obs_normalizer.", "obs_normalizer.")] = (
-          value
-        )
-      elif key in ["std", "log_std"]:
-        actor_state_dict[key] = value
-
-      if key.startswith("critic."):
-        critic_state_dict[key.replace("critic.", "mlp.")] = value
-      elif key.startswith("critic_obs_normalizer."):
-        critic_state_dict[key.replace("critic_obs_normalizer.", "obs_normalizer.")] = (
-          value
-        )
-    return {
-      "actor_state_dict": actor_state_dict,
-      "critic_state_dict": critic_state_dict,
-    }
-
-  @staticmethod
-  def _migrate_actor_distribution_keys(state_dict: dict[str, torch.Tensor]) -> None:
-    if "std" in state_dict:
-      state_dict["distribution.std_param"] = state_dict.pop("std")
-    if "log_std" in state_dict:
-      state_dict["distribution.log_std_param"] = state_dict.pop("log_std")
 
   def _copy_actor_distribution_state(
     self,

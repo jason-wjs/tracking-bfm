@@ -5,16 +5,17 @@ from typing import cast
 import torch
 import wandb
 from mjlab.rl import RslRlVecEnvWrapper
-from mjlab.rl.exporter_utils import (
-  attach_metadata_to_onnx,
-  get_base_metadata,
-)
+from mjlab.rl.exporter_utils import attach_metadata_to_onnx
 from mjlab.rl.runner import MjlabOnPolicyRunner
 from rsl_rl.env.vec_env import VecEnv
 from rsl_rl.utils import check_nan
 from torch import nn
 
 from tracking_bfm.tasks.tracking.mdp import MotionCommand
+from tracking_bfm.tasks.tracking.rl.policy_artifact import (
+  motion_metadata,
+  policy_artifact_paths,
+)
 
 
 class _OnnxMotionModel(nn.Module):
@@ -174,25 +175,20 @@ class MotionTrackingOnPolicyRunner(MjlabOnPolicyRunner):
     super().save(path, infos)
     if not self.cfg["upload_model"]:
       return
-    policy_dir, filename, onnx_path = self._get_export_paths(path)
+    artifact_paths = policy_artifact_paths(path)
     try:
-      self.export_policy_to_onnx(str(policy_dir), filename)
-      run_name: str = (
-        wandb.run.name if self.logger.logger_type == "wandb" and wandb.run else "local"
-      )  # type: ignore[assignment]
-      metadata = get_base_metadata(self.env.unwrapped, run_name)
-      motion_term = cast(
-        MotionCommand, self.env.unwrapped.command_manager.get_term("motion")
+      self.export_policy_to_onnx(
+        str(artifact_paths.policy_dir), artifact_paths.filename
       )
-      metadata.update(
-        {
-          "anchor_body_name": motion_term.cfg.anchor_body_name,
-          "body_names": list(motion_term.cfg.body_names),
-        }
-      )
-      attach_metadata_to_onnx(str(onnx_path), metadata)
+      run_identifier = "local"
+      if self.logger.logger_type == "wandb" and wandb.run:
+        run_identifier = getattr(wandb.run, "path", None) or wandb.run.name
+      metadata = motion_metadata(self.env, run_identifier)
+      attach_metadata_to_onnx(str(artifact_paths.onnx_path), metadata)
       if self.logger.logger_type in ["wandb"] and self.cfg["upload_model"]:
-        wandb.save(str(onnx_path), base_path=str(policy_dir))
+        wandb.save(
+          str(artifact_paths.onnx_path), base_path=str(artifact_paths.policy_dir)
+        )
         if self.registry_name is not None:
           wandb.run.use_artifact(self.registry_name)  # type: ignore
           self.registry_name = None

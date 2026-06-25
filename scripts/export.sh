@@ -12,12 +12,12 @@ append_arg() {
   fi
 }
 
-MODE="${MODE:-tracking}"
+MODE="${MODE:-policy}"
 
 case "$MODE" in
-  tracking)
+  policy)
     TASK="${TASK:-Mjlab-TrackingBFM-Flat-Unitree-G1}"
-    cmd=(uv run tracking-bfm-export-onnx --task-id "$TASK")
+    cmd=(uv run tracking-bfm-export policy --task-id "$TASK")
     append_arg --checkpoint "${CHECKPOINT:-}"
     append_arg --checkpoint-family "${CHECKPOINT_FAMILY:-}"
     append_arg --obs-group "${OBS_GROUP:-}"
@@ -29,7 +29,7 @@ case "$MODE" in
     ;;
   latent)
     TASK="${TASK:-Mjlab-LatentTrackingBFM-Flat-Unitree-G1-1Stage}"
-    cmd=(uv run tracking-bfm-export-latent-onnx --task-id "$TASK")
+    cmd=(uv run tracking-bfm-export latent --task-id "$TASK")
     append_arg --checkpoint "${CHECKPOINT:-}"
     append_arg --decoder-checkpoint "${DECODER_CHECKPOINT:-}"
     append_arg --obs-group "${OBS_GROUP:-}"
@@ -39,7 +39,7 @@ case "$MODE" in
     append_arg --latent-action-clip "${LATENT_ACTION_CLIP:-}"
     ;;
   *)
-    echo "Unsupported MODE=$MODE. Use MODE=tracking or MODE=latent." >&2
+    echo "Unsupported MODE=$MODE. Use MODE=policy or MODE=latent." >&2
     exit 2
     ;;
 esac

@@ -1,12 +1,14 @@
 """Unitree G1 latent tracking environment configurations."""
 
 from mjlab.envs import ManagerBasedRlEnvCfg
+from mjlab.envs import mdp as env_mdp
 from mjlab.managers.observation_manager import ObservationGroupCfg
 from mjlab.managers.reward_manager import RewardTermCfg
 from mjlab.managers.scene_entity_config import SceneEntityCfg
+from mjlab.tasks.tracking import mdp as upstream_tracking_mdp
 
 from tracking_bfm.tasks.distillation.mdp.observations import build_proprio_actor_terms
-from tracking_bfm.tasks.tracking import mdp
+from tracking_bfm.tasks.tracking import mdp as bfm_mdp
 
 _SPARSE_EE_BODY_NAMES = ("left_wrist_yaw_link", "right_wrist_yaw_link")
 _SPARSE_ROOT_BODY_NAME = "pelvis"
@@ -15,7 +17,7 @@ _SPARSE_ROOT_BODY_NAME = "pelvis"
 def _make_sparse_tracking_rewards() -> dict[str, RewardTermCfg]:
   return {
     "sparse_ee_pos": RewardTermCfg(
-      func=mdp.motion_relative_body_position_error_exp,
+      func=upstream_tracking_mdp.motion_relative_body_position_error_exp,
       weight=1.0,
       params={
         "command_name": "motion",
@@ -24,7 +26,7 @@ def _make_sparse_tracking_rewards() -> dict[str, RewardTermCfg]:
       },
     ),
     "sparse_ee_ori": RewardTermCfg(
-      func=mdp.motion_relative_body_orientation_error_exp,
+      func=upstream_tracking_mdp.motion_relative_body_orientation_error_exp,
       weight=1.0,
       params={
         "command_name": "motion",
@@ -33,7 +35,7 @@ def _make_sparse_tracking_rewards() -> dict[str, RewardTermCfg]:
       },
     ),
     "sparse_root_lin_vel": RewardTermCfg(
-      func=mdp.motion_global_body_linear_velocity_error_exp,
+      func=upstream_tracking_mdp.motion_global_body_linear_velocity_error_exp,
       weight=1.0,
       params={
         "command_name": "motion",
@@ -42,7 +44,7 @@ def _make_sparse_tracking_rewards() -> dict[str, RewardTermCfg]:
       },
     ),
     "sparse_root_ang_vel": RewardTermCfg(
-      func=mdp.motion_global_body_angular_velocity_error_exp,
+      func=upstream_tracking_mdp.motion_global_body_angular_velocity_error_exp,
       weight=1.0,
       params={
         "command_name": "motion",
@@ -51,7 +53,7 @@ def _make_sparse_tracking_rewards() -> dict[str, RewardTermCfg]:
       },
     ),
     "sparse_root_height": RewardTermCfg(
-      func=mdp.motion_global_body_height_error_exp,
+      func=bfm_mdp.motion_global_body_height_error_exp,
       weight=1.0,
       params={
         "command_name": "motion",
@@ -59,9 +61,9 @@ def _make_sparse_tracking_rewards() -> dict[str, RewardTermCfg]:
         "body_name": _SPARSE_ROOT_BODY_NAME,
       },
     ),
-    "action_rate_l2": RewardTermCfg(func=mdp.action_rate_l2, weight=-1e-1),
+    "action_rate_l2": RewardTermCfg(func=env_mdp.action_rate_l2, weight=-1e-1),
     "waist_action_rate_l2": RewardTermCfg(
-      func=mdp.joint_action_rate_l2,
+      func=bfm_mdp.joint_action_rate_l2,
       weight=-5e-2,
       params={
         "asset_cfg": SceneEntityCfg(
@@ -76,12 +78,12 @@ def _make_sparse_tracking_rewards() -> dict[str, RewardTermCfg]:
       },
     ),
     "joint_limit": RewardTermCfg(
-      func=mdp.joint_pos_limits,
+      func=env_mdp.joint_pos_limits,
       weight=-10.0,
       params={"asset_cfg": SceneEntityCfg("robot", joint_names=(".*",))},
     ),
     "self_collisions": RewardTermCfg(
-      func=mdp.self_collision_cost,
+      func=upstream_tracking_mdp.self_collision_cost,
       weight=-10.0,
       params={"sensor_name": "self_collision", "force_threshold": 10.0},
     ),

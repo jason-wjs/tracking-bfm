@@ -4,11 +4,11 @@ import pytest
 
 pytest.importorskip("mjlab")
 
+from importlib.util import find_spec
+
 from mjlab.tasks.registry import list_tasks, load_env_cfg, load_rl_cfg, load_runner_cls
 
 import tracking_bfm  # noqa: F401
-from tracking_bfm.tasks.tracking.mdp import multi_commands as legacy_multi_commands
-from tracking_bfm.tasks.tracking.mdp import multi_motion_command
 from tracking_bfm.tasks.tracking.mdp.multi_motion_command import MotionCommandCfg
 from tracking_bfm.tasks.tracking.wbteleop.runner import WbTeleopTrackingRunner
 
@@ -19,6 +19,20 @@ PRIMARY_TEST_OPTIMAL_ID = "Mjlab-TrackingBFM-Flat-Unitree-G1-TestOptimal"
 PRIMARY_TEST_OPTIMAL_NO_REG_NO_DR_ID = (
   "Mjlab-TrackingBFM-Flat-Unitree-G1-TestOptimal-NoRegNoDR"
 )
+PRIMARY_TRACKING_IDS = {
+  PRIMARY_TRACKING_ID,
+  PRIMARY_1STAGE_ID,
+  PRIMARY_WBTELEOP_ID,
+  PRIMARY_TEST_OPTIMAL_ID,
+  PRIMARY_TEST_OPTIMAL_NO_REG_NO_DR_ID,
+}
+REMOVED_TRACKING_LEGACY_ALIASES = {
+  "Mjlab-Trackingbfm-Flat-Unitree-G1",
+  "Mjlab-Trackingbfm-Flat-Unitree-G1-1Stage",
+  "Mjlab-Trackingbfm-Flat-Unitree-G1-wbteleop",
+  "Mjlab-Trackingbfm-Flat-Unitree-G1-TestOptimal",
+  "Mjlab-Trackingbfm-Flat-Unitree-G1-TestOptimal-NoRegNoDR",
+}
 REMOVED_TRACKING_LEGACY_IDS = {
   "Mjlab-TrackingBFM-Flat-Unitree-G1-ActionTrunk",
   "Mjlab-Trackingbfm-Flat-Unitree-G1-ActionTrunk",
@@ -29,65 +43,11 @@ def _term_names(task_id: str, group: str = "actor") -> set[str]:
   return set(load_env_cfg(task_id).observations[group].terms)
 
 
-def test_tracking_tasks_register_primary_ids_and_legacy_aliases() -> None:
+def test_tracking_tasks_register_primary_ids_without_legacy_aliases() -> None:
   task_ids = set(list_tasks())
 
-  assert {
-    PRIMARY_TRACKING_ID,
-    "Mjlab-Trackingbfm-Flat-Unitree-G1",
-    PRIMARY_1STAGE_ID,
-    "Mjlab-Trackingbfm-Flat-Unitree-G1-1Stage",
-    PRIMARY_WBTELEOP_ID,
-    "Mjlab-Trackingbfm-Flat-Unitree-G1-wbteleop",
-    PRIMARY_TEST_OPTIMAL_ID,
-    "Mjlab-Trackingbfm-Flat-Unitree-G1-TestOptimal",
-    PRIMARY_TEST_OPTIMAL_NO_REG_NO_DR_ID,
-    "Mjlab-Trackingbfm-Flat-Unitree-G1-TestOptimal-NoRegNoDR",
-  }.issubset(task_ids)
-
-
-def test_legacy_multi_commands_import_preserves_motion_command_identity() -> None:
-  assert legacy_multi_commands.MotionCommandCfg is multi_motion_command.MotionCommandCfg
-  assert (
-    legacy_multi_commands.MultiMotionCommandCfg
-    is multi_motion_command.MultiMotionCommandCfg
-  )
-  assert (
-    legacy_multi_commands.MultiMotionCommand is multi_motion_command.MultiMotionCommand
-  )
-
-
-@pytest.mark.parametrize(
-  ("primary_id", "legacy_alias"),
-  [
-    (PRIMARY_TRACKING_ID, "Mjlab-Trackingbfm-Flat-Unitree-G1"),
-    (PRIMARY_1STAGE_ID, "Mjlab-Trackingbfm-Flat-Unitree-G1-1Stage"),
-    (PRIMARY_WBTELEOP_ID, "Mjlab-Trackingbfm-Flat-Unitree-G1-wbteleop"),
-    (PRIMARY_TEST_OPTIMAL_ID, "Mjlab-Trackingbfm-Flat-Unitree-G1-TestOptimal"),
-    (
-      PRIMARY_TEST_OPTIMAL_NO_REG_NO_DR_ID,
-      "Mjlab-Trackingbfm-Flat-Unitree-G1-TestOptimal-NoRegNoDR",
-    ),
-  ],
-)
-def test_tracking_legacy_aliases_resolve_to_matching_task_surface(
-  primary_id: str,
-  legacy_alias: str,
-) -> None:
-  primary_env = load_env_cfg(primary_id)
-  alias_env = load_env_cfg(legacy_alias)
-  primary_play_env = load_env_cfg(primary_id, play=True)
-  alias_play_env = load_env_cfg(legacy_alias, play=True)
-  primary_rl = load_rl_cfg(primary_id)
-  alias_rl = load_rl_cfg(legacy_alias)
-
-  assert type(alias_env.commands["motion"]) is type(primary_env.commands["motion"])
-  assert type(alias_play_env.commands["motion"]) is type(
-    primary_play_env.commands["motion"]
-  )
-  assert load_runner_cls(legacy_alias) is load_runner_cls(primary_id)
-  assert alias_rl.algorithm.class_name == primary_rl.algorithm.class_name
-  assert alias_rl.experiment_name == primary_rl.experiment_name
+  assert PRIMARY_TRACKING_IDS.issubset(task_ids)
+  assert REMOVED_TRACKING_LEGACY_ALIASES.isdisjoint(task_ids)
 
 
 def test_removed_action_trunk_is_not_registered_or_exposed() -> None:
@@ -141,102 +101,47 @@ def test_tracking_bfm_test_optimal_no_reg_no_dr_removes_interference() -> None:
   assert motion_cmd.joint_position_range == (0.0, 0.0)
 
 
-def test_tracking_reuses_upstream_mdp_terms_and_keeps_bfm_reward_additions() -> None:
-  from mjlab.tasks.tracking.mdp import metrics as upstream_metrics
-  from mjlab.tasks.tracking.mdp import observations as upstream_observations
-  from mjlab.tasks.tracking.mdp import rewards as upstream_rewards
-  from mjlab.tasks.tracking.mdp import terminations as upstream_terminations
+def test_historical_tracking_mdp_shims_are_removed() -> None:
+  for module_name in (
+    "tracking_bfm.tasks.tracking.mdp.multi_commands",
+    "tracking_bfm.tasks.tracking.mdp.observations",
+    "tracking_bfm.tasks.tracking.mdp.terminations",
+    "tracking_bfm.tasks.tracking.mdp.metrics",
+  ):
+    assert find_spec(module_name) is None
 
-  from tracking_bfm.tasks.tracking.mdp import (
-    metrics,
-    observations,
-    rewards,
-    terminations,
+
+def test_tracking_cfg_uses_upstream_terms_and_local_bfm_rewards() -> None:
+  from mjlab.envs import mdp as env_mdp
+  from mjlab.tasks.tracking import mdp as upstream_tracking_mdp
+
+  from tracking_bfm.tasks.tracking import mdp as bfm_mdp
+
+  cfg = load_env_cfg(PRIMARY_TRACKING_ID)
+
+  assert cfg.observations["actor"].terms["command"].func is env_mdp.generated_commands
+  assert (
+    cfg.observations["actor"].terms["motion_anchor_pos_b"].func
+    is upstream_tracking_mdp.motion_anchor_pos_b
   )
-
-  assert observations.__all__ == [
-    "motion_anchor_ori_b",
-    "motion_anchor_pos_b",
-    "robot_body_ori_b",
-    "robot_body_pos_b",
-  ]
-  assert terminations.__all__ == [
-    "bad_anchor_ori",
-    "bad_anchor_pos",
-    "bad_anchor_pos_z_only",
-    "bad_motion_body_pos",
-    "bad_motion_body_pos_z_only",
-  ]
-  assert metrics.__all__ == [
-    "compute_mpkpe",
-    "compute_root_relative_mpkpe",
-    "compute_joint_velocity_error",
-    "compute_ee_position_error",
-    "compute_ee_orientation_error",
-  ]
-  assert rewards.__all__ == [
-    "motion_global_anchor_position_error_exp",
-    "motion_global_anchor_orientation_error_exp",
-    "motion_relative_body_position_error_exp",
-    "motion_relative_body_orientation_error_exp",
-    "motion_global_body_linear_velocity_error_exp",
-    "motion_global_body_angular_velocity_error_exp",
-    "self_collision_cost",
-    "motion_global_body_position_error_exp",
-    "motion_global_body_orientation_error_exp",
-    "motion_pelvis_limb_ee_position_error_exp",
-    "motion_pelvis_limb_ee_orientation_error_exp",
-    "motion_global_body_height_error_exp",
-    "joint_action_rate_l2",
-  ]
-
-  for name in (
-    "motion_anchor_pos_b",
-    "motion_anchor_ori_b",
-    "robot_body_pos_b",
-    "robot_body_ori_b",
-  ):
-    assert getattr(observations, name) is getattr(upstream_observations, name)
-
-  for name in (
-    "bad_anchor_pos",
-    "bad_anchor_pos_z_only",
-    "bad_anchor_ori",
-    "bad_motion_body_pos",
-    "bad_motion_body_pos_z_only",
-  ):
-    assert getattr(terminations, name) is getattr(upstream_terminations, name)
-
-  for name in (
-    "compute_mpkpe",
-    "compute_root_relative_mpkpe",
-    "compute_joint_velocity_error",
-    "compute_ee_position_error",
-    "compute_ee_orientation_error",
-  ):
-    assert getattr(metrics, name) is getattr(upstream_metrics, name)
-
-  for name in (
-    "motion_global_anchor_position_error_exp",
-    "motion_global_anchor_orientation_error_exp",
-    "motion_relative_body_position_error_exp",
-    "motion_relative_body_orientation_error_exp",
-    "motion_global_body_linear_velocity_error_exp",
-    "motion_global_body_angular_velocity_error_exp",
-    "self_collision_cost",
-  ):
-    assert getattr(rewards, name) is getattr(upstream_rewards, name)
-
-  for name in (
-    "motion_global_body_position_error_exp",
-    "motion_global_body_orientation_error_exp",
-    "motion_pelvis_limb_ee_position_error_exp",
-    "motion_pelvis_limb_ee_orientation_error_exp",
-    "motion_global_body_height_error_exp",
-    "joint_action_rate_l2",
-  ):
-    assert hasattr(rewards, name)
-    assert not hasattr(upstream_rewards, name)
+  assert (
+    cfg.observations["actor"].terms["body_pos"].func
+    is upstream_tracking_mdp.robot_body_pos_b
+  )
+  assert (
+    cfg.rewards["motion_global_root_pos"].func
+    is upstream_tracking_mdp.motion_global_anchor_position_error_exp
+  )
+  assert (
+    cfg.rewards["motion_body_pos"].func
+    is upstream_tracking_mdp.motion_relative_body_position_error_exp
+  )
+  assert cfg.rewards["action_rate_l2"].func is env_mdp.action_rate_l2
+  assert cfg.rewards["waist_action_rate_l2"].func is bfm_mdp.joint_action_rate_l2
+  assert (
+    cfg.terminations["anchor_pos"].func
+    is upstream_tracking_mdp.bad_anchor_pos_z_only
+  )
 
 
 def test_tracking_env_cfg_composes_upstream_base_cfg(monkeypatch) -> None:

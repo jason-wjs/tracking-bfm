@@ -12,6 +12,17 @@ from mjlab.tasks.registry import list_tasks, load_env_cfg
 
 import tracking_bfm  # noqa: F401
 
+PRIMARY_DISTILLATION_IDS = (
+  "Mjlab-DistillationBFM-Flat-Unitree-G1",
+  "Mjlab-LatentDistillationBFM-Flat-Unitree-G1",
+  "Mjlab-DistillationBFM-Flat-Unitree-G1-WBTeleopObs",
+)
+REMOVED_DISTILLATION_LEGACY_ALIASES = {
+  "Mjlab-Distillation-Flat-Unitree-G1",
+  "Mjlab-LatentDistillation-Flat-Unitree-G1",
+  "Mjlab-DistillationWbteleopObs-Flat-Unitree-G1",
+}
+
 
 def _noop_obs(_env):
   return None
@@ -110,12 +121,12 @@ def test_distillation_runner_configs_use_bfm_primary_teacher_and_latent_fields()
   assert latent_cfg.latent_regularization == "kl"
 
 
-def test_distillation_registration_uses_primary_ids_and_legacy_aliases(monkeypatch):
+def test_distillation_registration_uses_primary_ids(monkeypatch):
   from tracking_bfm.tasks.distillation.config.g1 import register_tasks
 
   calls = []
   monkeypatch.setattr(
-    "tracking_bfm.tasks.distillation.config.g1.register_task_with_aliases",
+    "tracking_bfm.tasks.distillation.config.g1.register_mjlab_task",
     lambda **kwargs: calls.append(kwargs),
   )
   monkeypatch.setattr(
@@ -130,24 +141,18 @@ def test_distillation_registration_uses_primary_ids_and_legacy_aliases(monkeypat
 
   register_tasks()
 
-  assert [call["primary_id"] for call in calls] == [
-    "Mjlab-DistillationBFM-Flat-Unitree-G1",
-    "Mjlab-LatentDistillationBFM-Flat-Unitree-G1",
-    "Mjlab-DistillationBFM-Flat-Unitree-G1-WBTeleopObs",
-  ]
-  assert calls[0]["aliases"] == ("Mjlab-Distillation-Flat-Unitree-G1",)
-  assert calls[1]["aliases"] == ("Mjlab-LatentDistillation-Flat-Unitree-G1",)
-  assert calls[2]["aliases"] == ("Mjlab-DistillationWbteleopObs-Flat-Unitree-G1",)
+  assert [call["task_id"] for call in calls] == list(PRIMARY_DISTILLATION_IDS)
+  assert all("aliases" not in call for call in calls)
   assert calls[0]["runner_cls"].__name__ == "DistillationRunner"
   assert calls[1]["runner_cls"].__name__ == "DistillationRunner"
   assert calls[2]["runner_cls"].__name__ == "DistillationRunner"
 
 
-def test_distillation_wbteleop_obs_task_is_registered_with_legacy_alias() -> None:
+def test_distillation_tasks_are_registered_without_legacy_aliases() -> None:
   task_ids = set(list_tasks())
 
-  assert "Mjlab-DistillationBFM-Flat-Unitree-G1-WBTeleopObs" in task_ids
-  assert "Mjlab-DistillationWbteleopObs-Flat-Unitree-G1" in task_ids
+  assert set(PRIMARY_DISTILLATION_IDS).issubset(task_ids)
+  assert REMOVED_DISTILLATION_LEGACY_ALIASES.isdisjoint(task_ids)
 
   cfg = load_env_cfg("Mjlab-DistillationBFM-Flat-Unitree-G1-WBTeleopObs")
 
