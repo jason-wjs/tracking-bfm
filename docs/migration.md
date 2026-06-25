@@ -13,13 +13,13 @@ out of the original `mjlab` fork and into a standalone package.
 
 | Task family | Primary task ID | Legacy alias(es) | Registration path | Runner class | Status | Notes / TBD |
 | --- | --- | --- | --- | --- | --- | --- |
-| Multi-motion tracking | `Mjlab-TrackingBFM-Flat-Unitree-G1` | `Mjlab-Trackingbfm-Flat-Unitree-G1` | `tracking_bfm.tasks.tracking.config.g1` | `MjlabOnPolicyRunner` default | Registered | Canonical BFM tracking task. |
-| 1-stage sparse tracking | `Mjlab-TrackingBFM-Flat-Unitree-G1-1Stage` | `Mjlab-Trackingbfm-Flat-Unitree-G1-1Stage` | `tracking_bfm.tasks.tracking.config.g1` | `MjlabOnPolicyRunner` default | Registered | Sparse-observation tracking variant. |
+| Multi-motion tracking | `Mjlab-TrackingBFM-Flat-Unitree-G1` | `Mjlab-Trackingbfm-Flat-Unitree-G1` | `tracking_bfm.tasks.tracking.config.g1` | `tracking_bfm.tasks.tracking.rl.MotionTrackingOnPolicyRunner` | Registered | Canonical BFM tracking task. |
+| 1-stage sparse tracking | `Mjlab-TrackingBFM-Flat-Unitree-G1-1Stage` | `Mjlab-Trackingbfm-Flat-Unitree-G1-1Stage` | `tracking_bfm.tasks.tracking.config.g1` | `tracking_bfm.tasks.tracking.rl.MotionTrackingOnPolicyRunner` | Registered | Sparse-observation tracking variant. |
 | WBTeleop tracking | `Mjlab-TrackingBFM-Flat-Unitree-G1-WBTeleop` | `Mjlab-Trackingbfm-Flat-Unitree-G1-wbteleop` | `tracking_bfm.tasks.tracking.wbteleop` | `tracking_bfm.tasks.tracking.wbteleop.runner.WbTeleopTrackingRunner` | Registered | WBTeleop-specific runner and algorithm. |
 | Distillation | `Mjlab-DistillationBFM-Flat-Unitree-G1` | `Mjlab-Distillation-Flat-Unitree-G1` | `tracking_bfm.tasks.distillation.config.g1` | `tracking_bfm.tasks.distillation.rl.DistillationRunner` | Registered | Standard BFM distillation task. |
 | Latent distillation | `Mjlab-LatentDistillationBFM-Flat-Unitree-G1` | `Mjlab-LatentDistillation-Flat-Unitree-G1` | `tracking_bfm.tasks.distillation.config.g1` | `tracking_bfm.tasks.distillation.rl.DistillationRunner` | Registered | Latent distillation runner config. |
-| Latent tracking | `Mjlab-LatentTrackingBFM-Flat-Unitree-G1-1Stage` | `Mjlab-LatentTrackingbfm-Flat-Unitree-G1-1Stage` | `tracking_bfm.tasks.latent_tracking.config.g1` | `tracking_bfm.tasks.latent_tracking.rl.LatentTrackingRunner` | Registered | Latent tracking 1-stage task. |
-| Latent velocity | `Mjlab-LatentVelocityBFM-Flat-Unitree-G1` | `Mjlab-LatentRL-Flat-Unitree-G1` | `tracking_bfm.tasks.latent_velocity.config.g1` | `tracking_bfm.tasks.latent_velocity.rl.LatentVelocityRunner` | Registered | `LatentRL` remains a legacy alias. |
+| Latent tracking | `Mjlab-LatentTrackingBFM-Flat-Unitree-G1-1Stage` | `Mjlab-LatentTrackingbfm-Flat-Unitree-G1-1Stage` | `tracking_bfm.tasks.latent_tracking.config.g1` | `tracking_bfm.tasks.latent_tracking.rl.LatentTrackingOnPolicyRunner` | Registered | Latent tracking 1-stage task. |
+| Latent velocity | `Mjlab-LatentVelocityBFM-Flat-Unitree-G1` | `Mjlab-LatentRL-Flat-Unitree-G1` | `tracking_bfm.tasks.latent_velocity.config.g1` | `tracking_bfm.tasks.latent_velocity.rl.LatentVelocityOnPolicyRunner` | Registered | `LatentRL` remains a legacy alias. |
 
 ## Feature Parity Decisions
 

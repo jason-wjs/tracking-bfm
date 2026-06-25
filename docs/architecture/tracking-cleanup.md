@@ -87,7 +87,7 @@ further cleanup, such as Motion source resolution.
    imports. Completed for upstream observation and termination terms.
 3. Implement the Motion source Module described in
    `docs/architecture/motion-source.md`. First migration batch completed for
-   export, data processing, evaluate, and train.
+   export, data processing, evaluate, train, and play.
 4. Resolve `legacy-candidate` entries through `docs/migration.md`.
 5. Revisit large `bfm-owned` implementations after Motion source and legacy
    task surface are stable.
